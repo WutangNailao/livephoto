@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LivePhoto Player</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <div class="panel-copy">
+          <p class="eyebrow">LivePhoto Web Player</p>
+          <h1>最小可运行播放器</h1>
+          <p class="lede">
+            选择一个 <code>.livephoto</code> 文件，页面会解析文件头、TOC、META、PHOT、VIDE，并在浏览器里显示封面图和视频。
+          </p>
+        </div>
+
+        <div class="toolbar">
+          <label class="file-picker">
+            <input id="file-input" type="file" accept=".livephoto" />
+            <span>选择 .livephoto</span>
+          </label>
+          <button id="play-button" type="button" disabled>播放</button>
+          <button id="reset-button" type="button" disabled>回到封面</button>
+        </div>
+
+        <div class="viewer" id="viewer">
+          <img id="cover-image" alt="cover" hidden />
+          <video id="motion-video" playsinline preload="metadata" hidden></video>
+          <div class="placeholder" id="placeholder">
+            <p>未加载文件</p>
+          </div>
+        </div>
+
+        <section class="meta">
+          <h2>Manifest</h2>
+          <pre id="manifest-output">等待加载...</pre>
+        </section>
+
+        <section class="meta">
+          <h2>Chunks</h2>
+          <pre id="chunks-output">等待加载...</pre>
+        </section>
+
+        <p class="hint">
+          长按或点击播放器区域可播放，播放结束后会回到封面。
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./player.js"></script>
+  </body>
+</html>

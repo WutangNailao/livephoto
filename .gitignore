@@ -1,0 +1,10 @@
+/target
+
+.DS_Store
+
+*.swp
+*.swo
+*.tmp
+
+.env
+.env.local
