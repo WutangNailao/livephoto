@@ -253,7 +253,7 @@ fn scan_chunks_as_toc(bytes: &[u8]) -> Result<TocPayloadV1> {
         }
         let mut cursor = Cursor::new(&bytes[offset as usize..]);
         let header = LpChunkHeaderV1::read_from(&mut cursor)?;
-        if header.header_size < CHUNK_HEADER_SIZE_V1 {
+        if header.header_size != CHUNK_HEADER_SIZE_V1 {
             break;
         }
         let total_length = header.total_length();
@@ -415,6 +415,7 @@ fn validate_manifest_payload_mime(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Error;
     use crate::manifest::{ManifestV1, PlaybackPolicyV1};
     use crate::writer::{LivePhotoAsset, WriterOptions};
 
@@ -437,15 +438,27 @@ mod tests {
         }
     }
 
-    #[test]
-    fn recovery_mode_scans_when_toc_header_is_corrupted() {
+    fn sample_asset_bytes() -> Vec<u8> {
         let asset = LivePhotoAsset {
             manifest: sample_manifest(),
             photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
             video: b"\0\0\0\x18ftypmp42".to_vec(),
             optional_chunks: vec![],
         };
-        let mut bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
+        asset.write_to_bytes(WriterOptions::default()).unwrap()
+    }
+
+    fn write_u32_le(bytes: &mut [u8], offset: usize, value: u32) {
+        bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn write_u16_le(bytes: &mut [u8], offset: usize, value: u16) {
+        bytes[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[test]
+    fn recovery_mode_scans_when_toc_header_is_corrupted() {
+        let mut bytes = sample_asset_bytes();
         let toc_offset =
             u64::from_le_bytes(bytes[20..28].try_into().expect("slice length should match"));
         bytes[toc_offset as usize] = b'B';
@@ -461,5 +474,91 @@ mod tests {
         )
         .unwrap();
         assert_eq!(recovered.manifest.schema, "livephoto/v1");
+    }
+
+    #[test]
+    fn rejects_file_header_sizes_other_than_fixed_v1_size() {
+        let mut larger = sample_asset_bytes();
+        write_u32_le(&mut larger, 8, crate::types::FILE_HEADER_SIZE_V1 + 4);
+
+        let err = LivePhotoFile::from_bytes(&larger, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::MalformedHeader(message) if message.contains("must equal")
+        ));
+
+        let recovery_err = LivePhotoFile::from_bytes(
+            &larger,
+            ReaderOptions {
+                strictness: Strictness::Recovery,
+                ..ReaderOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert!(matches!(
+            recovery_err,
+            Error::MalformedHeader(message) if message.contains("must equal")
+        ));
+
+        let mut smaller = sample_asset_bytes();
+        write_u32_le(&mut smaller, 8, crate::types::FILE_HEADER_SIZE_V1 - 1);
+
+        let err = LivePhotoFile::from_bytes(&smaller, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::MalformedHeader(message) if message.contains("must equal")
+        ));
+    }
+
+    #[test]
+    fn rejects_chunk_header_sizes_other_than_fixed_v1_size() {
+        let mut larger = sample_asset_bytes();
+        write_u16_le(
+            &mut larger,
+            crate::types::FILE_HEADER_SIZE_V1 as usize + 6,
+            CHUNK_HEADER_SIZE_V1 + 16,
+        );
+
+        let err = LivePhotoFile::from_bytes(&larger, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::InvalidOffsetOrLength(message) if message.contains("must equal")
+        ));
+
+        let mut smaller = sample_asset_bytes();
+        write_u16_le(
+            &mut smaller,
+            crate::types::FILE_HEADER_SIZE_V1 as usize + 6,
+            CHUNK_HEADER_SIZE_V1 - 1,
+        );
+
+        let err = LivePhotoFile::from_bytes(&smaller, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::InvalidOffsetOrLength(message) if message.contains("must equal")
+        ));
+    }
+
+    #[test]
+    fn recovery_mode_does_not_treat_larger_chunk_headers_as_extensible() {
+        let mut bytes = sample_asset_bytes();
+        let toc_offset =
+            u64::from_le_bytes(bytes[20..28].try_into().expect("slice length should match"));
+        bytes[toc_offset as usize] = b'B';
+        write_u16_le(
+            &mut bytes,
+            crate::types::FILE_HEADER_SIZE_V1 as usize + 6,
+            CHUNK_HEADER_SIZE_V1 + 16,
+        );
+
+        let err = LivePhotoFile::from_bytes(
+            &bytes,
+            ReaderOptions {
+                strictness: Strictness::Recovery,
+                ..ReaderOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert!(matches!(err, Error::MalformedToc(message) if message.contains("recovery scan")));
     }
 }

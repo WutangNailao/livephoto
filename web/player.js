@@ -142,6 +142,10 @@ async function parseLivePhoto(file) {
   const fileSize = Number(view.getBigUint64(36, true));
   const primaryManifestId = Number(view.getBigUint64(44, true));
 
+  if (headerSize !== 68) {
+    throw new Error(`file header_size 必须为 68，实际为 ${headerSize}`);
+  }
+
   if (fileSize !== bytes.length) {
     throw new Error(`file_size 不匹配: header=${fileSize}, actual=${bytes.length}`);
   }
@@ -190,6 +194,11 @@ function parseChunk(bytes, offset) {
   const chunkId = Number(view.getBigUint64(8, true));
   const flags = Number(view.getBigUint64(16, true));
   const storedLength = Number(view.getBigUint64(24, true));
+
+  if (headerSize !== 48) {
+    throw new Error(`chunk ${chunkType} header_size 必须为 48，实际为 ${headerSize}`);
+  }
+
   const payloadStart = offset + headerSize;
   const payloadEnd = payloadStart + storedLength;
   const payload = bytes.slice(payloadStart, payloadEnd);

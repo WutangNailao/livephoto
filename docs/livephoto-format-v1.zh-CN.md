@@ -150,7 +150,7 @@ struct LPFileHeaderV1 {
 读取器：
 
 - 必须拒绝非法 magic
-- 必须拒绝 `header_size < 68`
+- 必须拒绝 `header_size != 68`
 - 必须拒绝 `toc_offset == 0`
 - 必须拒绝 `file_size < 68`
 - 应拒绝不一致的偏移和长度字段
@@ -190,6 +190,14 @@ struct LPChunkHeaderV1 {
 ```
 
 chunk header 在 v1 中固定为 48 字节。
+
+写入器：
+
+- 必须写入 `header_size = 48`
+
+读取器：
+
+- 必须拒绝 `header_size != 48`
 
 ### 7.2 Chunk 顺序
 
@@ -634,6 +642,7 @@ v1 不规定具体密码学格式，但保留该 chunk type。
 
 - 保持 68 字节文件头契约不变
 - 保持 48 字节 chunk 头契约不变
+- 不得通过增大 `header_size` 在 v1.x 内引入头部扩展
 - 不改变已有必选字段的语义
 - 仅新增可选字段或新的可选 chunk 类型
 

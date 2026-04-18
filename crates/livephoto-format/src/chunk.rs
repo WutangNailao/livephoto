@@ -189,9 +189,9 @@ impl LpChunkHeaderV1 {
     }
 
     pub fn validate(&self, strict: bool) -> Result<()> {
-        if self.header_size < CHUNK_HEADER_SIZE_V1 {
+        if self.header_size != CHUNK_HEADER_SIZE_V1 {
             return Err(Error::InvalidOffsetOrLength(format!(
-                "chunk {} header_size {} is smaller than {}",
+                "chunk {} header_size {} must equal {}",
                 self.chunk_id, self.header_size, CHUNK_HEADER_SIZE_V1
             )));
         }

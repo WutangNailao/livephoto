@@ -150,7 +150,7 @@ Writers:
 Readers:
 
 - must reject invalid magic
-- must reject `header_size < 68`
+- must reject `header_size != 68`
 - must reject `toc_offset == 0`
 - must reject `file_size < 68`
 - should reject inconsistent offset or length fields
@@ -190,6 +190,14 @@ struct LPChunkHeaderV1 {
 ```
 
 The chunk header size is fixed at 48 bytes in v1.
+
+Writers:
+
+- must write `header_size = 48`
+
+Readers:
+
+- must reject `header_size != 48`
 
 ### 7.2 Chunk Ordering
 
@@ -634,6 +642,7 @@ Future v1.x revisions must:
 
 - preserve the 68-byte file header contract
 - preserve the 48-byte chunk header contract
+- not use larger `header_size` values to introduce header extensions within v1.x
 - avoid changing semantics of existing required fields
 - add only optional fields or new optional chunk types
 

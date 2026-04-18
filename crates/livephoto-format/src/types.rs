@@ -101,9 +101,9 @@ impl LpFileHeaderV1 {
         if self.major_version != MAJOR_VERSION_V1 {
             return Err(Error::UnsupportedMajorVersion(self.major_version));
         }
-        if self.header_size < FILE_HEADER_SIZE_V1 {
+        if self.header_size != FILE_HEADER_SIZE_V1 {
             return Err(Error::MalformedHeader(format!(
-                "header_size {} is smaller than {}",
+                "header_size {} must equal {}",
                 self.header_size, FILE_HEADER_SIZE_V1
             )));
         }
