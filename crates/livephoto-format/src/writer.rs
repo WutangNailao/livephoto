@@ -3,9 +3,7 @@ use std::fs;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::path::Path;
 
-use crate::chunk::{
-    ChunkEnvelope, ChunkFlags, ChunkKind, HashPayloadV1, TocEntryV1, TocPayloadV1,
-};
+use crate::chunk::{ChunkEnvelope, ChunkFlags, ChunkKind, HashPayloadV1, TocEntryV1, TocPayloadV1};
 use crate::error::{ConformanceIssue, Error, Result};
 use crate::manifest::{
     AndroidBridgeV1, AppleBridgeV1, ManifestV1, SignaturePayloadV1, VendorPayloadV1,
@@ -157,7 +155,8 @@ impl LivePhotoAsset {
         for optional in &self.optional_chunks {
             let flags = optional.default_flags();
             let (kind, payload) = optional.to_payload()?;
-            let envelope = ChunkEnvelope::new(kind, next_chunk_id, flags, payload, options.emit_crc32c);
+            let envelope =
+                ChunkEnvelope::new(kind, next_chunk_id, flags, payload, options.emit_crc32c);
             match kind {
                 ChunkKind::Thmb => {
                     optional_metadata.thumbnail_chunk_id = Some(next_chunk_id);
@@ -217,14 +216,18 @@ impl LivePhotoAsset {
             next_chunk_id += 1;
         }
 
-        manifest.thumbnail_chunk_id = manifest.thumbnail_chunk_id.or(optional_metadata.thumbnail_chunk_id);
+        manifest.thumbnail_chunk_id = manifest
+            .thumbnail_chunk_id
+            .or(optional_metadata.thumbnail_chunk_id);
         manifest.exif_chunk_id = manifest.exif_chunk_id.or(optional_metadata.exif_chunk_id);
         manifest.xmp_chunk_id = manifest.xmp_chunk_id.or(optional_metadata.xmp_chunk_id);
         manifest.hash_chunk_id = manifest.hash_chunk_id.or(optional_metadata.hash_chunk_id);
-        manifest.apple_bridge_chunk_id =
-            manifest.apple_bridge_chunk_id.or(optional_metadata.apple_bridge_chunk_id);
-        manifest.android_bridge_chunk_id =
-            manifest.android_bridge_chunk_id.or(optional_metadata.android_bridge_chunk_id);
+        manifest.apple_bridge_chunk_id = manifest
+            .apple_bridge_chunk_id
+            .or(optional_metadata.apple_bridge_chunk_id);
+        manifest.android_bridge_chunk_id = manifest
+            .android_bridge_chunk_id
+            .or(optional_metadata.android_bridge_chunk_id);
         let apple_bridge_chunk_id = manifest.apple_bridge_chunk_id;
         let android_bridge_chunk_id = manifest.android_bridge_chunk_id;
         if apple_bridge_chunk_id.is_some() {
@@ -241,7 +244,13 @@ impl LivePhotoAsset {
 
         let meta_payload = serde_json::to_vec_pretty(&manifest)?;
         let meta_flags = ChunkFlags::REQUIRED_FOR_PRIMARY_PLAYBACK;
-        let meta = ChunkEnvelope::new(ChunkKind::Meta, meta_chunk_id, meta_flags, meta_payload, options.emit_crc32c);
+        let meta = ChunkEnvelope::new(
+            ChunkKind::Meta,
+            meta_chunk_id,
+            meta_flags,
+            meta_payload,
+            options.emit_crc32c,
+        );
         let photo = ChunkEnvelope::new(
             ChunkKind::Phot,
             photo_chunk_id,
@@ -288,7 +297,13 @@ impl LivePhotoAsset {
         };
         let toc_payload_bytes = toc_payload.to_bytes()?;
         let toc_offset = cursor.position();
-        let toc_chunk = ChunkEnvelope::new(ChunkKind::Tocc, next_chunk_id, 0, toc_payload_bytes, options.emit_crc32c);
+        let toc_chunk = ChunkEnvelope::new(
+            ChunkKind::Tocc,
+            next_chunk_id,
+            0,
+            toc_payload_bytes,
+            options.emit_crc32c,
+        );
         let toc_total_length = toc_chunk.total_length();
         toc_chunk.write_to(&mut cursor)?;
         let file_size = cursor.position();
@@ -349,7 +364,10 @@ impl OptionalChunk {
                 chunk_type,
                 payload,
                 ..
-            } => Ok((ChunkKind::Unknown(*chunk_type), serde_json::to_vec_pretty(payload)?)),
+            } => Ok((
+                ChunkKind::Unknown(*chunk_type),
+                serde_json::to_vec_pretty(payload)?,
+            )),
             Self::UnknownBinary {
                 chunk_type,
                 payload,
@@ -359,7 +377,10 @@ impl OptionalChunk {
     }
 }
 
-pub fn inspect_file<P: AsRef<Path>>(path: P, options: ReaderOptions) -> Result<(LivePhotoFile, ValidationReport)> {
+pub fn inspect_file<P: AsRef<Path>>(
+    path: P,
+    options: ReaderOptions,
+) -> Result<(LivePhotoFile, ValidationReport)> {
     let file = LivePhotoFile::open(path, options)?;
     let report = file.validate_conformance();
     Ok((file, report))
@@ -543,7 +564,10 @@ mod tests {
         let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
         let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
         assert_eq!(parsed.manifest.schema, "livephoto/v1");
-        assert_eq!(parsed.get_photo().unwrap().payload, vec![0xFF, 0xD8, 0xFF, 0xD9]);
+        assert_eq!(
+            parsed.get_photo().unwrap().payload,
+            vec![0xFF, 0xD8, 0xFF, 0xD9]
+        );
     }
 
     #[test]
@@ -567,13 +591,15 @@ mod tests {
             optional_chunks: optional_chunks_from_asset_like(&parsed.to_asset()),
         };
         let rebuilt_bytes = rebuilt.write_to_bytes(WriterOptions::default()).unwrap();
-        let rebuilt_file = LivePhotoFile::from_bytes(&rebuilt_bytes, ReaderOptions::default()).unwrap();
+        let rebuilt_file =
+            LivePhotoFile::from_bytes(&rebuilt_bytes, ReaderOptions::default()).unwrap();
         assert!(
             rebuilt_file
                 .to_asset()
                 .optional_chunks
                 .iter()
-                .any(|(kind, _, payload)| *kind == ChunkKind::Unknown(*b"ZZZZ") && payload == b"opaque")
+                .any(|(kind, _, payload)| *kind == ChunkKind::Unknown(*b"ZZZZ")
+                    && payload == b"opaque")
         );
     }
 
@@ -612,7 +638,10 @@ mod tests {
         };
         let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
         let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
-        assert_ne!(parsed.header.flags & crate::types::FileFlags::SIGNATURE_PRESENT, 0);
+        assert_ne!(
+            parsed.header.flags & crate::types::FileFlags::SIGNATURE_PRESENT,
+            0
+        );
         assert_ne!(
             parsed.header.flags & crate::types::FileFlags::APPLE_BRIDGE_PRESENT,
             0
@@ -629,15 +658,19 @@ mod tests {
             parsed.manifest.extensions.get("exif_format"),
             Some(&serde_json::Value::String("json".to_string()))
         );
-        assert!(parsed
-            .manifest
-            .bridges
-            .iter()
-            .any(|bridge| bridge.target == "apple-live-photo"));
-        assert!(parsed
-            .manifest
-            .bridges
-            .iter()
-            .any(|bridge| bridge.target == "android-motion-photo"));
+        assert!(
+            parsed
+                .manifest
+                .bridges
+                .iter()
+                .any(|bridge| bridge.target == "apple-live-photo")
+        );
+        assert!(
+            parsed
+                .manifest
+                .bridges
+                .iter()
+                .any(|bridge| bridge.target == "android-motion-photo")
+        );
     }
 }

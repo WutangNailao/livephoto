@@ -108,7 +108,9 @@ impl LpFileHeaderV1 {
             )));
         }
         if self.toc_offset == 0 {
-            return Err(Error::MalformedHeader("toc_offset must not be zero".to_string()));
+            return Err(Error::MalformedHeader(
+                "toc_offset must not be zero".to_string(),
+            ));
         }
         if self.file_size < u64::from(FILE_HEADER_SIZE_V1) {
             return Err(Error::MalformedHeader("file_size too small".to_string()));
@@ -157,9 +159,5 @@ pub(crate) fn write_u64<W: Write>(writer: &mut W, value: u64) -> Result<()> {
 
 pub(crate) fn pad_len(stored_length: u64) -> u64 {
     let rem = stored_length % 8;
-    if rem == 0 {
-        0
-    } else {
-        8 - rem
-    }
+    if rem == 0 { 0 } else { 8 - rem }
 }

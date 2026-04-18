@@ -17,6 +17,6 @@ pub use manifest::{
 pub use reader::{ChunkPayloadView, LivePhotoAssetLike, LivePhotoFile};
 pub use types::{FILE_HEADER_SIZE_V1, FileFlags, LpFileHeaderV1};
 pub use writer::{
-    inspect_file, LivePhotoAsset, OptionalChunk, ReaderOptions, Strictness, ValidationReport,
-    WriterOptions,
+    LivePhotoAsset, OptionalChunk, ReaderOptions, Strictness, ValidationReport, WriterOptions,
+    inspect_file,
 };

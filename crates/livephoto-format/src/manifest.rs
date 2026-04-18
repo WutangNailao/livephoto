@@ -220,7 +220,9 @@ fn validate_photo_mime(mime: &str) -> Result<()> {
     if allowed.contains(&mime) {
         Ok(())
     } else {
-        Err(Error::UnsupportedCodec(format!("unsupported photo mime: {mime}")))
+        Err(Error::UnsupportedCodec(format!(
+            "unsupported photo mime: {mime}"
+        )))
     }
 }
 
@@ -229,7 +231,9 @@ fn validate_video_mime(mime: &str) -> Result<()> {
     if allowed.contains(&mime) {
         Ok(())
     } else {
-        Err(Error::UnsupportedCodec(format!("unsupported video mime: {mime}")))
+        Err(Error::UnsupportedCodec(format!(
+            "unsupported video mime: {mime}"
+        )))
     }
 }
 

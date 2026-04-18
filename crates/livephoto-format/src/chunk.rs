@@ -122,7 +122,13 @@ pub struct LpChunkHeaderV1 {
 }
 
 impl LpChunkHeaderV1 {
-    pub fn new(kind: ChunkKind, chunk_id: u64, flags: u64, payload_len: u64, with_crc32c: bool) -> Self {
+    pub fn new(
+        kind: ChunkKind,
+        chunk_id: u64,
+        flags: u64,
+        payload_len: u64,
+        with_crc32c: bool,
+    ) -> Self {
         let crc32c = if with_crc32c { 1 } else { 0 };
         Self {
             chunk_type: kind.as_bytes(),
@@ -206,7 +212,13 @@ pub struct ChunkEnvelope {
 }
 
 impl ChunkEnvelope {
-    pub fn new(kind: ChunkKind, chunk_id: u64, flags: u64, payload: Vec<u8>, crc32c_enabled: bool) -> Self {
+    pub fn new(
+        kind: ChunkKind,
+        chunk_id: u64,
+        flags: u64,
+        payload: Vec<u8>,
+        crc32c_enabled: bool,
+    ) -> Self {
         let mut header =
             LpChunkHeaderV1::new(kind, chunk_id, flags, payload.len() as u64, crc32c_enabled);
         if crc32c_enabled {

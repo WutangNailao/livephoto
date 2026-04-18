@@ -127,7 +127,11 @@ impl LivePhotoFile {
     pub fn validate_conformance(&self) -> ValidationReport {
         let mut report = ValidationReport::default();
         for required in [ChunkKind::Meta, ChunkKind::Phot, ChunkKind::Vide] {
-            if !self.chunks.iter().any(|record| record.header.kind() == required) {
+            if !self
+                .chunks
+                .iter()
+                .any(|record| record.header.kind() == required)
+            {
                 report.issues.push(ConformanceIssue {
                     code: "missing_required_chunk",
                     message: format!("missing required chunk {}", required.display_name()),
@@ -198,8 +202,14 @@ impl LivePhotoFile {
         }
         LivePhotoAssetLike {
             manifest: self.manifest.clone(),
-            photo: self.get_photo().map(|v| v.payload.clone()).unwrap_or_default(),
-            video: self.get_video().map(|v| v.payload.clone()).unwrap_or_default(),
+            photo: self
+                .get_photo()
+                .map(|v| v.payload.clone())
+                .unwrap_or_default(),
+            video: self
+                .get_video()
+                .map(|v| v.payload.clone())
+                .unwrap_or_default(),
             optional_chunks,
         }
     }
@@ -217,13 +227,17 @@ fn read_toc(bytes: &[u8], header: &LpFileHeaderV1) -> Result<TocPayloadV1> {
     let toc_offset = header.toc_offset as usize;
     let toc_length = header.toc_length as usize;
     if toc_offset + toc_length > bytes.len() {
-        return Err(Error::MalformedToc("TOC region is out of bounds".to_string()));
+        return Err(Error::MalformedToc(
+            "TOC region is out of bounds".to_string(),
+        ));
     }
     let mut cursor = Cursor::new(&bytes[toc_offset..toc_offset + toc_length]);
     let toc_header = LpChunkHeaderV1::read_from(&mut cursor)?;
     toc_header.validate(true)?;
     if toc_header.kind() != ChunkKind::Tocc {
-        return Err(Error::MalformedToc("chunk at toc_offset is not TOCC".to_string()));
+        return Err(Error::MalformedToc(
+            "chunk at toc_offset is not TOCC".to_string(),
+        ));
     }
     let mut payload = vec![0u8; toc_header.stored_length as usize];
     cursor.read_exact(&mut payload)?;
@@ -352,7 +366,9 @@ fn ensure_single_tocc(records: &[ChunkRecord]) -> Result<()> {
         .filter(|record| record.header.kind() == ChunkKind::Tocc)
         .count();
     if count > 1 {
-        Err(Error::MalformedToc("multiple TOCC chunks found".to_string()))
+        Err(Error::MalformedToc(
+            "multiple TOCC chunks found".to_string(),
+        ))
     } else {
         Ok(())
     }
