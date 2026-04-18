@@ -44,7 +44,7 @@ A `.livephoto` file contains:
 - one required manifest chunk
 - one required primary cover image chunk
 - one required primary motion video chunk
-- zero or more optional chunks for thumbnails, hashes, EXIF, XMP, bridge metadata, subtitles, alternate renditions, signatures, and vendor extensions
+- zero or more optional chunks for thumbnails, hashes, EXIF, XMP, bridge metadata, alternate renditions, signatures, and vendor extensions
 
 The semantic model is:
 
