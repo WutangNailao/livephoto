@@ -39,6 +39,8 @@
   中文项目介绍
 - `crates/livephoto-format`
   `.livephoto` 格式的 Rust 实现
+- `crates/livephoto-toolkit`
+  可复用的高层 Rust API，用于打包、检查、解包 `.livephoto` 文件
 - `crates/livephoto-cli`
   用于打包、检查、解包 `.livephoto` 的命令行工具
 - `web/`
@@ -86,6 +88,26 @@ cargo run -p livephoto-cli -- \
 cd /Users/nailao/Code/livephoto
 
 cargo run -p livephoto-cli -- inspect /path/to/output.livephoto
+```
+
+### 在 Rust 代码中调用
+
+```rust
+use livephoto_toolkit::{pack_livephoto, PackRequest};
+
+pack_livephoto(PackRequest {
+    manifest: "/path/to/manifest.json".into(),
+    photo: "/path/to/photo.heic".into(),
+    video: "/path/to/video.mov".into(),
+    out: "/path/to/output.livephoto".into(),
+    thumbnail: None,
+    exif_raw: None,
+    xmp: None,
+    hash_json: None,
+    apple_bridge_json: None,
+    android_bridge_json: None,
+    emit_crc32c: true,
+})?;
 ```
 
 ### 解包 `.livephoto`

@@ -39,6 +39,8 @@ This project exists to make dynamic photos easier to:
   Chinese project introduction
 - `crates/livephoto-format`
   Rust implementation of the container format
+- `crates/livephoto-toolkit`
+  Reusable high-level Rust APIs for packing, inspecting, and unpacking `.livephoto` files
 - `crates/livephoto-cli`
   CLI for packing, inspecting, and unpacking `.livephoto` files
 - `web/`
@@ -86,6 +88,26 @@ cargo run -p livephoto-cli -- \
 cd /Users/nailao/Code/livephoto
 
 cargo run -p livephoto-cli -- inspect /path/to/output.livephoto
+```
+
+### Call from Rust Code
+
+```rust
+use livephoto_toolkit::{pack_livephoto, PackRequest};
+
+pack_livephoto(PackRequest {
+    manifest: "/path/to/manifest.json".into(),
+    photo: "/path/to/photo.heic".into(),
+    video: "/path/to/video.mov".into(),
+    out: "/path/to/output.livephoto".into(),
+    thumbnail: None,
+    exif_raw: None,
+    xmp: None,
+    hash_json: None,
+    apple_bridge_json: None,
+    android_bridge_json: None,
+    emit_crc32c: true,
+})?;
 ```
 
 ### Unpack a `.livephoto`

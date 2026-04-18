@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/livephoto-format",
+    "crates/livephoto-toolkit",
     "crates/livephoto-cli",
 ]
 resolver = "3"

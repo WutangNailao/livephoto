@@ -137,7 +137,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "livephoto-format",
+ "livephoto-toolkit",
  "serde_json",
 ]
 
@@ -149,6 +149,15 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "livephoto-toolkit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "livephoto-format",
+ "serde_json",
 ]
 
 [[package]]
