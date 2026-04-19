@@ -326,57 +326,76 @@ Exactly one primary `META` chunk is required in v1.
 
 #### 9.1.2 Manifest Schema
 
-The following fields are defined in v1.
+The following root fields are defined in v1.
 
-Required root fields:
+| Name | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `schema` | string literal | Yes | Must be `"livephoto/v1"`. |
+| `asset_id` | string | Yes | Opaque unique identifier for the logical asset. UUID is recommended but not required; if a UUID is used, it must follow Section 4.5. |
+| `created_at_ms` | integer (`u64`) | Yes | Logical creation timestamp in milliseconds. |
+| `duration_ms` | integer (`u64`) | Yes | Total motion duration in milliseconds. Must be greater than zero. |
+| `width` | integer (`u32`) | Yes | Display width in pixels. Must be greater than zero. |
+| `height` | integer (`u32`) | Yes | Display height in pixels. Must be greater than zero. |
+| `cover_timestamp_ms` | integer (`u64`) | Yes | Timestamp in the motion clip corresponding to the cover image. Must not exceed `duration_ms`. |
+| `photo_chunk_id` | integer (`u64`) | Yes | Chunk id of the primary cover image. Must reference the primary `PHOT` chunk. |
+| `video_chunk_id` | integer (`u64`) | Yes | Chunk id of the primary motion video. Must reference the primary `VIDE` chunk. |
+| `photo_mime` | string | Yes | MIME type of the primary cover image payload. See Section 9.2 for supported values. |
+| `video_mime` | string | Yes | MIME type of the primary motion video payload. See Section 9.3 for supported values. |
+| `has_audio` | boolean | Yes | Whether the primary motion video contains audible media. |
+| `playback` | object | Yes | Playback policy object. See Section 9.1.3. |
+| `title` | string | No | Optional human-readable title. |
+| `description` | string | No | Optional human-readable description. |
+| `author` | string | No | Optional author or creator attribution. |
+| `timezone` | string | No | Optional timezone hint associated with the logical capture context. |
+| `rotation_degrees` | integer (`i32`) | No | Optional display rotation metadata in degrees. |
+| `thumbnail_chunk_id` | integer (`u64`) | No | Chunk id of the optional thumbnail image. Must reference a `THMB` chunk. |
+| `exif_chunk_id` | integer (`u64`) | No | Chunk id of the optional EXIF metadata block. Must reference an `EXIF` chunk. |
+| `xmp_chunk_id` | integer (`u64`) | No | Chunk id of the optional XMP packet. Must reference an `XMP_` chunk. |
+| `hash_chunk_id` | integer (`u64`) | No | Chunk id of the optional integrity hash block. Must reference a `HASH` chunk. |
+| `apple_bridge_chunk_id` | integer (`u64`) | No | Chunk id of the optional Apple bridge metadata block. Must reference an `APPL` chunk. |
+| `android_bridge_chunk_id` | integer (`u64`) | No | Chunk id of the optional Android bridge metadata block. Must reference an `ANDR` chunk. |
+| `bridges` | array of objects | No | Optional structured bridge descriptors. Each item is a `BridgeDescriptorV1` object as defined below. |
+| `tags` | array of strings | No | Optional free-form tags. |
+| `capture_device` | string | No | Optional capture device identifier or model hint. |
+| `software` | string | No | Optional writer, importer, or source software identifier. |
+| `color_space` | string | No | Optional color space hint for primary presentation. |
+| `alpha_mode` | string enum | No | Optional alpha interpretation hint. Allowed values are listed below. |
+| `poster_strategy` | string enum | No | Optional strategy hint describing how the poster image was chosen. Allowed values are listed below. |
+| `preferred_seek_pre_roll_ms` | integer (`u64`) | No | Optional player hint indicating how much decode pre-roll to apply before a target seek position. |
+| `extensions` | object mapping strings to arbitrary JSON values | No | Optional vendor or future-compatible extension fields. Unknown keys must be ignored by readers. |
 
-- `schema`: must be `"livephoto/v1"`
-- `asset_id`: opaque unique string identifying the logical asset; UUID recommended but not required; if a UUID is used, it must follow Section 4.5
-- `created_at_ms`: logical creation timestamp
-- `duration_ms`: total motion duration
-- `width`: display width in pixels
-- `height`: display height in pixels
-- `cover_timestamp_ms`: timestamp in motion clip corresponding to the cover image
-- `photo_chunk_id`: chunk id of primary cover image
-- `video_chunk_id`: chunk id of primary motion video
-- `photo_mime`: MIME type of cover image payload
-- `video_mime`: MIME type of motion video payload
-- `has_audio`: whether the primary motion video contains audible media
-- `playback`: playback policy object
+`alpha_mode` values in v1:
 
-Optional root fields:
+- `"none"`
+- `"straight"`
+- `"premultiplied"`
 
-- `title`
-- `description`
-- `author`
-- `timezone`
-- `rotation_degrees`
-- `thumbnail_chunk_id`
-- `exif_chunk_id`
-- `xmp_chunk_id`
-- `hash_chunk_id`
-- `apple_bridge_chunk_id`
-- `android_bridge_chunk_id`
-- `tags`
-- `capture_device`
-- `software`
-- `color_space`
-- `alpha_mode`
-- `poster_strategy`
-- `preferred_seek_pre_roll_ms`
-- `extensions`
+`poster_strategy` values in v1:
+
+- `"explicit"`
+- `"video_frame"`
+- `"generated"`
+
+`BridgeDescriptorV1` object fields:
+
+| Name | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `target` | string | Yes | Bridge target identifier such as `"apple-live-photo"` or `"android-motion-photo"`. |
+| `chunk_id` | integer (`u64`) | Yes | Chunk id of the associated bridge metadata chunk. |
 
 #### 9.1.3 Playback Object
 
 Defined `playback` fields:
 
-- `autoplay`: boolean
-- `loop`: boolean
-- `bounce`: boolean
-- `muted_by_default`: boolean
-- `return_to_cover`: boolean
-- `hold_last_frame`: boolean, optional
-- `interaction_hint`: optional string enum
+| Name | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `autoplay` | boolean | Yes | Whether playback should begin automatically when the asset is presented. |
+| `loop` | boolean | Yes | Whether playback should restart from the beginning after reaching the end. |
+| `bounce` | boolean | Yes | Whether playback should attempt forward-then-reverse presentation when supported. |
+| `muted_by_default` | boolean | Yes | Whether playback should start muted when audio exists. |
+| `return_to_cover` | boolean | Yes | Whether the player should restore the cover representation after playback ends. |
+| `hold_last_frame` | boolean | No | If `true` and `return_to_cover == false`, the player may remain on the final decoded frame. |
+| `interaction_hint` | string enum | No | Optional interaction trigger hint. Allowed values are listed below. |
 
 Allowed `interaction_hint` values in v1:
 

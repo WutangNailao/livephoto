@@ -326,57 +326,76 @@ v1 中必须存在且仅存在一个主 `META`。
 
 #### 9.1.2 Manifest 字段定义
 
-v1 中定义以下字段。
+v1 中定义以下根对象字段。
 
-根对象必选字段：
+| 名称 | 类型 | 是否必须 | 说明 |
+| --- | --- | --- | --- |
+| `schema` | 字符串字面量 | 是 | 必须为 `"livephoto/v1"`。 |
+| `asset_id` | string | 是 | 逻辑资源的不透明唯一标识。推荐使用 UUID，但非强制；若使用 UUID，必须符合 4.5 节规定的标准小写连字符形式。 |
+| `created_at_ms` | 整数（`u64`） | 是 | 逻辑创建时间戳，单位毫秒。 |
+| `duration_ms` | 整数（`u64`） | 是 | 动态视频总时长，单位毫秒。必须大于 0。 |
+| `width` | 整数（`u32`） | 是 | 显示宽度，单位像素。必须大于 0。 |
+| `height` | 整数（`u32`） | 是 | 显示高度，单位像素。必须大于 0。 |
+| `cover_timestamp_ms` | 整数（`u64`） | 是 | 封面图在动态片段中对应的时间点，单位毫秒。不得超过 `duration_ms`。 |
+| `photo_chunk_id` | 整数（`u64`） | 是 | 主封面图 chunk 的 id。必须引用主 `PHOT` chunk。 |
+| `video_chunk_id` | 整数（`u64`） | 是 | 主动态视频 chunk 的 id。必须引用主 `VIDE` chunk。 |
+| `photo_mime` | string | 是 | 主封面图 payload 的 MIME 类型。支持值见 9.2 节。 |
+| `video_mime` | string | 是 | 主动态视频 payload 的 MIME 类型。支持值见 9.3 节。 |
+| `has_audio` | boolean | 是 | 主动态视频是否包含可听音频。 |
+| `playback` | object | 是 | 播放策略对象。详见 9.1.3 节。 |
+| `title` | string | 否 | 可选的人类可读标题。 |
+| `description` | string | 否 | 可选的人类可读描述。 |
+| `author` | string | 否 | 可选的作者或创建者标识。 |
+| `timezone` | string | 否 | 与逻辑拍摄上下文相关的可选时区提示。 |
+| `rotation_degrees` | 整数（`i32`） | 否 | 可选的显示旋转元数据，单位为度。 |
+| `thumbnail_chunk_id` | 整数（`u64`） | 否 | 可选缩略图 chunk 的 id。必须引用 `THMB` chunk。 |
+| `exif_chunk_id` | 整数（`u64`） | 否 | 可选 EXIF 元数据 chunk 的 id。必须引用 `EXIF` chunk。 |
+| `xmp_chunk_id` | 整数（`u64`） | 否 | 可选 XMP packet chunk 的 id。必须引用 `XMP_` chunk。 |
+| `hash_chunk_id` | 整数（`u64`） | 否 | 可选完整性哈希块的 chunk id。必须引用 `HASH` chunk。 |
+| `apple_bridge_chunk_id` | 整数（`u64`） | 否 | 可选 Apple bridge 元数据块的 chunk id。必须引用 `APPL` chunk。 |
+| `android_bridge_chunk_id` | 整数（`u64`） | 否 | 可选 Android bridge 元数据块的 chunk id。必须引用 `ANDR` chunk。 |
+| `bridges` | 对象数组 | 否 | 可选的结构化 bridge 描述符列表。数组元素为下文定义的 `BridgeDescriptorV1` 对象。 |
+| `tags` | 字符串数组 | 否 | 可选的自由标签列表。 |
+| `capture_device` | string | 否 | 可选的拍摄设备标识或型号提示。 |
+| `software` | string | 否 | 可选的写入器、导入器或源软件标识。 |
+| `color_space` | string | 否 | 可选的主展示色彩空间提示。 |
+| `alpha_mode` | 字符串枚举 | 否 | 可选的 alpha 解释提示。允许值见下文。 |
+| `poster_strategy` | 字符串枚举 | 否 | 可选的封面选择策略提示。允许值见下文。 |
+| `preferred_seek_pre_roll_ms` | 整数（`u64`） | 否 | 可选播放器提示，表示在 seek 到目标位置前建议预解码的时长，单位毫秒。 |
+| `extensions` | `string -> 任意 JSON 值` 的对象映射 | 否 | 可选的厂商扩展或未来兼容字段。读取器必须忽略未知键。 |
 
-- `schema`：必须为 `"livephoto/v1"`
-- `asset_id`：逻辑资源的不透明唯一字符串标识；推荐使用 UUID，但非强制；若使用 UUID，必须符合 4.5 节规定的标准小写连字符形式
-- `created_at_ms`：逻辑创建时间戳
-- `duration_ms`：动态视频总时长
-- `width`：显示宽度，单位像素
-- `height`：显示高度，单位像素
-- `cover_timestamp_ms`：封面图在动态片段中对应的时间点
-- `photo_chunk_id`：主封面图 chunk id
-- `video_chunk_id`：主动态视频 chunk id
-- `photo_mime`：封面图 MIME 类型
-- `video_mime`：动态视频 MIME 类型
-- `has_audio`：主动态视频是否包含可听音频
-- `playback`：播放策略对象
+`alpha_mode` 在 v1 中允许的值：
 
-根对象可选字段：
+- `"none"`
+- `"straight"`
+- `"premultiplied"`
 
-- `title`
-- `description`
-- `author`
-- `timezone`
-- `rotation_degrees`
-- `thumbnail_chunk_id`
-- `exif_chunk_id`
-- `xmp_chunk_id`
-- `hash_chunk_id`
-- `apple_bridge_chunk_id`
-- `android_bridge_chunk_id`
-- `tags`
-- `capture_device`
-- `software`
-- `color_space`
-- `alpha_mode`
-- `poster_strategy`
-- `preferred_seek_pre_roll_ms`
-- `extensions`
+`poster_strategy` 在 v1 中允许的值：
+
+- `"explicit"`
+- `"video_frame"`
+- `"generated"`
+
+`BridgeDescriptorV1` 对象字段：
+
+| 名称 | 类型 | 是否必须 | 说明 |
+| --- | --- | --- | --- |
+| `target` | string | 是 | bridge 目标标识，例如 `"apple-live-photo"` 或 `"android-motion-photo"`。 |
+| `chunk_id` | 整数（`u64`） | 是 | 对应 bridge 元数据 chunk 的 id。 |
 
 #### 9.1.3 Playback 对象
 
 `playback` 在 v1 中定义的字段：
 
-- `autoplay`：布尔值
-- `loop`：布尔值
-- `bounce`：布尔值
-- `muted_by_default`：布尔值
-- `return_to_cover`：布尔值
-- `hold_last_frame`：可选布尔值
-- `interaction_hint`：可选字符串枚举
+| 名称 | 类型 | 是否必须 | 说明 |
+| --- | --- | --- | --- |
+| `autoplay` | boolean | 是 | 资源展示时是否应自动开始播放。 |
+| `loop` | boolean | 是 | 到达末尾后是否应从头重新播放。 |
+| `bounce` | boolean | 是 | 是否在支持时尝试正向后再反向播放。 |
+| `muted_by_default` | boolean | 是 | 若存在音频，播放开始时是否默认静音。 |
+| `return_to_cover` | boolean | 是 | 播放结束后是否应恢复到封面图表示。 |
+| `hold_last_frame` | boolean | 否 | 若为 `true` 且 `return_to_cover == false`，播放器可以停留在最后一帧。 |
+| `interaction_hint` | 字符串枚举 | 否 | 可选的交互触发提示。允许值见下文。 |
 
 `interaction_hint` 在 v1 中允许的值：
 
