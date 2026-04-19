@@ -52,7 +52,7 @@
 
 - 文件头、chunk 头和 TOC 的读写
 - `META`、`PHOT`、`VIDE`、`TOCC` 的核心语义
-- 缩略图、EXIF、XMP、哈希、Apple bridge、Android bridge、备用版本、签名、厂商扩展和未知 chunk 等可选块
+- 缩略图、EXIF、XMP、哈希、Apple bridge、Android bridge、签名、厂商扩展和未知 chunk 等可选块
 - manifest 校验
 - checksum 校验
 - TOC 损坏时的恢复模式扫描

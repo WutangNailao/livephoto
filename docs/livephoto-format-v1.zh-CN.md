@@ -44,7 +44,7 @@
 - 一个必选 manifest 块
 - 一个必选主封面图块
 - 一个必选主动态视频块
-- 零个或多个可选块，用于缩略图、哈希、EXIF、XMP、桥接元数据、备用版本、签名、厂商扩展等
+- 零个或多个可选块，用于缩略图、哈希、EXIF、XMP、桥接元数据、签名、厂商扩展等
 
 语义模型如下：
 
@@ -230,7 +230,7 @@ v1 中已定义位：
 - bit 0：该 chunk 为主播放流程必需
 - bit 1：payload 已压缩
 - bit 2：payload 已加密
-- bit 3：该 chunk 是备用版本
+- bit 3：保留
 - bit 4：该 chunk 只包含桥接元数据，不参与直接播放
 
 读取器在非严格模式下应忽略未知位。
@@ -550,35 +550,13 @@ v1 中 payload 使用 UTF-8 JSON：
 }
 ```
 
-### 10.7 `ALTV` 备用视频 Chunk
-
-用于存储备用动态视频版本。
-
-典型场景：
-
-- 更低码率版本
-- HEVC 版本
-- WebM 版本
-
-其与主播放逻辑的关系应通过 `META.extensions` 或未来更正式的 manifest 字段声明。
-
-### 10.8 `ALTP` 备用图片 Chunk
-
-用于存储备用静态图版本。
-
-典型场景：
-
-- HEIC 主图之外再提供 JPEG fallback
-- 更低分辨率预览图
-- 带透明通道的 PNG 版本
-
-### 10.9 `SIGN` 签名 Chunk
+### 10.7 `SIGN` 签名 Chunk
 
 用于存储 detached signature 或证书链。
 
 v1 不规定具体密码学格式，但保留该 chunk type。
 
-### 10.10 `VEND` 厂商扩展 Chunk
+### 10.8 `VEND` 厂商扩展 Chunk
 
 用于存储实现方私有数据。
 
@@ -594,7 +572,6 @@ v1 不规定具体密码学格式，但保留该 chunk type。
 规则如下：
 
 - manifest 必须声明 `photo_mime` 与 `video_mime`
-- 可选的备用版本应在 manifest 扩展字段中声明 MIME
 - 读取器在可行时应对 payload 做格式探测，并在不匹配时警告
 - 写入器不应依赖 payload 内部文件扩展名判断格式
 

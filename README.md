@@ -52,7 +52,7 @@ The current implementation supports:
 
 - file header, chunk header, and TOC parsing/writing
 - required `META`, `PHOT`, `VIDE`, and `TOCC` semantics
-- optional chunks such as thumbnail, EXIF, XMP, hash, Apple bridge, Android bridge, alternate renditions, signature, vendor extensions, and unknown chunks
+- optional chunks such as thumbnail, EXIF, XMP, hash, Apple bridge, Android bridge, signature, vendor extensions, and unknown chunks
 - manifest validation
 - checksum verification
 - recovery-mode chunk scanning if TOC parsing fails

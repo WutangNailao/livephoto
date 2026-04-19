@@ -26,6 +26,5 @@ Then open:
 ## Limits
 
 - no streaming parser yet
-- no alternate rendition selection
 - no bridge chunk visualization
 - no frame-accurate seek to `cover_timestamp_ms`

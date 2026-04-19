@@ -74,14 +74,6 @@ pub enum OptionalChunk {
     Hash(HashPayloadV1),
     AppleBridge(AppleBridgeV1),
     AndroidBridge(AndroidBridgeV1),
-    AlternateVideo {
-        mime: String,
-        bytes: Vec<u8>,
-    },
-    AlternatePhoto {
-        mime: String,
-        bytes: Vec<u8>,
-    },
     Signature(SignaturePayloadV1),
     Vendor(VendorPayloadV1),
     UnknownJson {
@@ -183,28 +175,6 @@ impl LivePhotoAsset {
                 ChunkKind::Hash => optional_metadata.hash_chunk_id = Some(next_chunk_id),
                 ChunkKind::Appl => optional_metadata.apple_bridge_chunk_id = Some(next_chunk_id),
                 ChunkKind::Andr => optional_metadata.android_bridge_chunk_id = Some(next_chunk_id),
-                ChunkKind::Altv => {
-                    let mime = match optional {
-                        OptionalChunk::AlternateVideo { mime, .. } => mime.clone(),
-                        _ => unreachable!(),
-                    };
-                    push_extension_array(
-                        &mut manifest.extensions,
-                        "alternate_video_mimes",
-                        serde_json::Value::String(mime),
-                    );
-                }
-                ChunkKind::Altp => {
-                    let mime = match optional {
-                        OptionalChunk::AlternatePhoto { mime, .. } => mime.clone(),
-                        _ => unreachable!(),
-                    };
-                    push_extension_array(
-                        &mut manifest.extensions,
-                        "alternate_photo_mimes",
-                        serde_json::Value::String(mime),
-                    );
-                }
                 ChunkKind::Sign => optional_metadata.signature_present = true,
                 _ => {
                     if flags & ChunkFlags::ENCRYPTED != 0 {
@@ -339,9 +309,6 @@ impl OptionalChunk {
     fn default_flags(&self) -> u64 {
         match self {
             Self::AppleBridge(_) | Self::AndroidBridge(_) => ChunkFlags::DETACHED_BRIDGE_METADATA,
-            Self::AlternateVideo { .. } | Self::AlternatePhoto { .. } => {
-                ChunkFlags::ALTERNATE_RENDITION
-            }
             Self::UnknownJson { flags, .. } | Self::UnknownBinary { flags, .. } => *flags,
             _ => 0,
         }
@@ -356,8 +323,6 @@ impl OptionalChunk {
             Self::Hash(value) => Ok((ChunkKind::Hash, serde_json::to_vec_pretty(value)?)),
             Self::AppleBridge(value) => Ok((ChunkKind::Appl, serde_json::to_vec_pretty(value)?)),
             Self::AndroidBridge(value) => Ok((ChunkKind::Andr, serde_json::to_vec_pretty(value)?)),
-            Self::AlternateVideo { bytes, .. } => Ok((ChunkKind::Altv, bytes.clone())),
-            Self::AlternatePhoto { bytes, .. } => Ok((ChunkKind::Altp, bytes.clone())),
             Self::Signature(value) => Ok((ChunkKind::Sign, serde_json::to_vec_pretty(value)?)),
             Self::Vendor(value) => Ok((ChunkKind::Vend, serde_json::to_vec_pretty(value)?)),
             Self::UnknownJson {
@@ -428,19 +393,6 @@ fn build_file_flags(manifest: &ManifestV1, optional_metadata: &OptionalMetadata)
     flags
 }
 
-fn push_extension_array(
-    extensions: &mut std::collections::BTreeMap<String, serde_json::Value>,
-    key: &str,
-    value: serde_json::Value,
-) {
-    let entry = extensions
-        .entry(key.to_string())
-        .or_insert_with(|| serde_json::Value::Array(Vec::new()));
-    if let serde_json::Value::Array(values) = entry {
-        values.push(value);
-    }
-}
-
 fn push_bridge_descriptor(manifest: &mut ManifestV1, target: &str, chunk_id: Option<u64>) {
     let Some(chunk_id) = chunk_id else {
         return;
@@ -491,14 +443,6 @@ pub fn optional_chunks_from_asset_like(
                     flags: *flags,
                     payload: payload.clone(),
                 }),
-            ChunkKind::Altv => OptionalChunk::AlternateVideo {
-                mime: "application/octet-stream".to_string(),
-                bytes: payload.clone(),
-            },
-            ChunkKind::Altp => OptionalChunk::AlternatePhoto {
-                mime: "application/octet-stream".to_string(),
-                bytes: payload.clone(),
-            },
             ChunkKind::Sign => serde_json::from_slice(payload)
                 .map(OptionalChunk::Signature)
                 .unwrap_or_else(|_| OptionalChunk::UnknownBinary {

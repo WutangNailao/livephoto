@@ -20,8 +20,6 @@ pub enum ChunkKind {
     Hash,
     Appl,
     Andr,
-    Altv,
-    Altp,
     Sign,
     Vend,
     Unknown([u8; 4]),
@@ -40,8 +38,6 @@ impl ChunkKind {
             b"HASH" => Self::Hash,
             b"APPL" => Self::Appl,
             b"ANDR" => Self::Andr,
-            b"ALTV" => Self::Altv,
-            b"ALTP" => Self::Altp,
             b"SIGN" => Self::Sign,
             b"VEND" => Self::Vend,
             _ => Self::Unknown(bytes),
@@ -60,8 +56,6 @@ impl ChunkKind {
             Self::Hash => *b"HASH",
             Self::Appl => *b"APPL",
             Self::Andr => *b"ANDR",
-            Self::Altv => *b"ALTV",
-            Self::Altp => *b"ALTP",
             Self::Sign => *b"SIGN",
             Self::Vend => *b"VEND",
             Self::Unknown(bytes) => bytes,
@@ -84,8 +78,6 @@ impl ChunkKind {
             Self::Hash => "HASH",
             Self::Appl => "APPL",
             Self::Andr => "ANDR",
-            Self::Altv => "ALTV",
-            Self::Altp => "ALTP",
             Self::Sign => "SIGN",
             Self::Vend => "VEND",
             Self::Unknown(_) => "UNKN",
@@ -100,7 +92,6 @@ impl ChunkFlags {
     pub const REQUIRED_FOR_PRIMARY_PLAYBACK: u64 = 1 << 0;
     pub const COMPRESSED: u64 = 1 << 1;
     pub const ENCRYPTED: u64 = 1 << 2;
-    pub const ALTERNATE_RENDITION: u64 = 1 << 3;
     pub const DETACHED_BRIDGE_METADATA: u64 = 1 << 4;
 
     pub fn contains(self, bit: u64) -> bool {

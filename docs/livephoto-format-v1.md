@@ -44,7 +44,7 @@ A `.livephoto` file contains:
 - one required manifest chunk
 - one required primary cover image chunk
 - one required primary motion video chunk
-- zero or more optional chunks for thumbnails, hashes, EXIF, XMP, bridge metadata, alternate renditions, signatures, and vendor extensions
+- zero or more optional chunks for thumbnails, hashes, EXIF, XMP, bridge metadata, signatures, and vendor extensions
 
 The semantic model is:
 
@@ -230,7 +230,7 @@ Defined bits in v1:
 - bit 0: chunk is required for primary playback
 - bit 1: chunk payload is compressed
 - bit 2: chunk payload is encrypted
-- bit 3: chunk is an alternate rendition
+- bit 3: reserved
 - bit 4: chunk is detached bridge metadata only
 
 Unknown bits must be ignored by readers unless strict validation is enabled.
@@ -550,35 +550,13 @@ Recommended fields:
 }
 ```
 
-### 10.7 `ALTV` Alternate Video Chunk
-
-Stores an alternate motion video rendition.
-
-Typical use:
-
-- lower bitrate variant
-- HEVC variant
-- WebM variant
-
-Its relationship to primary playback must be declared in `META.extensions` or a future structured manifest field.
-
-### 10.8 `ALTP` Alternate Photo Chunk
-
-Stores an alternate still image rendition.
-
-Typical use:
-
-- JPEG fallback for HEIC primary
-- lower resolution preview
-- transparent PNG asset
-
-### 10.9 `SIGN` Signature Chunk
+### 10.7 `SIGN` Signature Chunk
 
 Stores a detached signature or certificate chain.
 
 The exact cryptographic schema is out of scope for v1 but the chunk type is reserved.
 
-### 10.10 `VEND` Vendor Extension Chunk
+### 10.8 `VEND` Vendor Extension Chunk
 
 Stores implementation-specific data.
 
@@ -594,7 +572,6 @@ It only transports encoded payloads.
 Rules:
 
 - the manifest must declare `photo_mime` and `video_mime`
-- optional alternate renditions should declare their MIME in manifest extensions
 - readers should sniff payloads when possible and warn on mismatches
 - writers should not rely on file extension inside payloads
 
