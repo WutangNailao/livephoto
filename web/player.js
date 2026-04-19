@@ -165,6 +165,10 @@ async function parseLivePhoto(file) {
     ...parseChunk(bytes, entry.offset),
   }));
 
+  if (chunks.some((chunk) => chunk.kind === "TOCC")) {
+    throw new Error("canonical TOC 不得包含 TOCC entry");
+  }
+
   const manifestChunk = chunks.find((chunk) => chunk.chunkId === primaryManifestId);
   if (!manifestChunk || manifestChunk.kind !== "META") {
     throw new Error("未找到主 META chunk");
@@ -236,6 +240,10 @@ function parseToc(buffer) {
       storedLength,
       flags,
     });
+
+    if (kind === "TOCC") {
+      throw new Error("canonical TOC 不得包含 TOCC entry");
+    }
 
     offset += 48;
   }

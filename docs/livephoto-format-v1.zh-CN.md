@@ -203,9 +203,12 @@ chunk header 在 v1 中固定为 48 字节。
 
 chunk 顺序本身不具有语义意义，但以下规则必须满足：
 
-- `TOCC` 必须且仅能出现一次
+- `file_header.toc_offset` 必须指向一个 canonical `TOCC`
 - 主资源所需的 `META`、`PHOT`、`VIDE` 必须存在
 - `TOCC` 应放在最后
+
+严格模式读取器必须拒绝包含额外非 canonical `TOCC` 的文件。
+恢复模式读取器可以忽略额外的非 canonical `TOCC`。
 
 建议写入顺序：
 
@@ -270,13 +273,17 @@ struct LPToCEntryV1 {
 写入器：
 
 - 必须将所有非 TOC chunk 写入 TOC
-- 可以选择将 TOC 自身作为最后一项写入
+- 不得将 canonical `TOCC` 自身写入目录项
 - 必须保证 chunk id 全局唯一
 
 读取器：
 
 - 应优先使用 TOC 导航
+- 必须将 `file_header.toc_offset` 指向的 `TOCC` 视为 canonical TOC
+- 必须拒绝 `chunk_type == TOCC` 的 canonical TOC entry
 - 若 TOC 校验失败，在恢复模式下可以回退为线性扫描
+
+厂商自定义的辅助索引必须使用 `VEND` 或其他非 `TOCC` chunk type。
 
 ## 9. 必选 Chunk 类型
 
@@ -654,6 +661,7 @@ Rust 中建议定义如下错误类别：
 - unsupported major version
 - malformed header
 - malformed TOC
+- duplicate or non-canonical `TOCC`
 - duplicate chunk id
 - required chunk missing
 - manifest parse failure
@@ -669,6 +677,8 @@ Rust 中建议定义如下错误类别：
 - 缺失必选 chunk
 - manifest 不一致
 - chunk 偏移重叠
+- 存在额外的非 canonical `TOCC`
+- canonical TOC entry 引用了 `TOCC`
 
 恢复模式可以：
 
@@ -799,7 +809,7 @@ pub struct PlaybackPolicyV1 {
 4. 先写固定文件头，占位 TOC 与文件大小字段。
 5. 顺序写入 `META`、`PHOT`、`VIDE` 及可选 chunk。
 6. 记录每个 chunk 的偏移和总长度。
-7. 构造并写入 `TOCC` chunk。
+7. 构造并写入只包含非 `TOCC` 目录项的 canonical `TOCC` chunk。
 8. 回填文件头。
 9. 若流程支持，可在最终落盘前写入哈希信息。
 
@@ -809,11 +819,13 @@ pub struct PlaybackPolicyV1 {
 
 1. 读取并校验固定 header。
 2. 跳转到 `toc_offset`。
-3. 解析并校验 `TOCC`。
+3. 解析并校验 canonical `TOCC`。
 4. 通过 `primary_manifest_id` 找到主 `META`。
 5. 解析 manifest JSON。
 6. 通过 `photo_chunk_id` 和 `video_chunk_id` 解析主封面图与主视频。
 7. 向上层暴露 payload 切片、reader 或 blob 源。
+
+严格模式读取器之后应线性扫描全文件，确认不存在额外的 `TOCC`。
 
 ## 20. 最小合法文件
 

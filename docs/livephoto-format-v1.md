@@ -203,9 +203,12 @@ Readers:
 
 Chunk order is not semantically significant except:
 
-- exactly one `TOCC` chunk must exist
+- `file_header.toc_offset` must point to one canonical `TOCC` chunk
 - `META`, `PHOT`, and `VIDE` chunks required by the primary asset must exist
 - the `TOCC` chunk should be last
+
+Strict readers must reject files containing any additional non-canonical `TOCC` chunks.
+Recovery readers may ignore additional non-canonical `TOCC` chunks.
 
 Recommended write order:
 
@@ -270,13 +273,17 @@ struct LPToCEntryV1 {
 Writers:
 
 - must include every non-TOC chunk in the TOC
-- may include the TOC itself as the last entry
+- must not include the canonical `TOCC` itself as an entry
 - must ensure chunk ids are unique
 
 Readers:
 
 - should prefer TOC-based navigation
+- must treat the `TOCC` referenced by `file_header.toc_offset` as the canonical TOC
+- must reject canonical TOC entries whose `chunk_type` is `TOCC`
 - may fall back to linear scan if TOC validation fails and recovery mode is enabled
+
+Vendor-defined auxiliary indexes must use `VEND` or another non-`TOCC` chunk type.
 
 ## 9. Required Chunk Types
 
@@ -654,6 +661,7 @@ Suggested Rust error categories:
 - unsupported major version
 - malformed header
 - malformed TOC
+- duplicate or non-canonical `TOCC`
 - duplicate chunk id
 - required chunk missing
 - manifest parse failure
@@ -669,6 +677,8 @@ Strict mode should fail on:
 - missing required chunks
 - manifest inconsistencies
 - overlapping chunk offsets
+- additional non-canonical `TOCC` chunks
+- canonical TOC entries that reference `TOCC`
 
 Recovery mode may:
 
@@ -799,7 +809,7 @@ Recommended write procedure:
 4. Write the fixed file header with placeholder TOC and file size fields.
 5. Write `META`, `PHOT`, `VIDE`, and optional chunks sequentially.
 6. Record each chunk offset and total length.
-7. Build and write the `TOCC` chunk.
+7. Build and write the canonical `TOCC` chunk containing only non-`TOCC` entries.
 8. Seek back and finalize the file header.
 9. Optionally compute and write hashes before finalization if your pipeline supports it.
 
@@ -809,11 +819,13 @@ Recommended read procedure:
 
 1. Read and validate the fixed header.
 2. Seek to `toc_offset`.
-3. Parse and validate `TOCC`.
+3. Parse and validate the canonical `TOCC`.
 4. Resolve the primary `META` chunk using `primary_manifest_id`.
 5. Parse manifest JSON.
 6. Resolve `photo_chunk_id` and `video_chunk_id`.
 7. Expose borrowed payload slices or stream readers for image and video data.
+
+Strict readers should then linearly scan the file to confirm that no additional `TOCC` chunks exist.
 
 ## 20. Minimal Valid File
 

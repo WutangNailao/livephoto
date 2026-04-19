@@ -71,8 +71,11 @@ impl LivePhotoFile {
             records.push(record);
         }
         validate_no_overlap(&occupied_ranges)?;
-
-        ensure_single_tocc(&records)?;
+        validate_canonical_toc_entries(&records)?;
+        if strict {
+            let scanned_chunks = scan_all_chunks(bytes)?;
+            validate_strict_tocc_uniqueness(&scanned_chunks, header.toc_offset)?;
+        }
         let manifest_payload = payloads
             .get(&header.primary_manifest_id)
             .ok_or(Error::RequiredChunkMissing("META"))?;
@@ -280,12 +283,46 @@ fn scan_chunks_as_toc(bytes: &[u8]) -> Result<TocPayloadV1> {
     Ok(TocPayloadV1 { entries })
 }
 
+fn scan_all_chunks(bytes: &[u8]) -> Result<Vec<ChunkRecord>> {
+    let mut records = Vec::new();
+    let mut offset = u64::from(crate::types::FILE_HEADER_SIZE_V1);
+    while (offset as usize) < bytes.len() {
+        if offset as usize + CHUNK_HEADER_SIZE_V1 as usize > bytes.len() {
+            return Err(Error::MalformedToc(
+                "strict scan encountered trailing bytes after the final chunk".to_string(),
+            ));
+        }
+        let mut cursor = Cursor::new(&bytes[offset as usize..]);
+        let header = LpChunkHeaderV1::read_from(&mut cursor)?;
+        header.validate(true)?;
+        let total_length = header.total_length();
+        if total_length == 0 || offset + total_length > bytes.len() as u64 {
+            return Err(Error::InvalidOffsetOrLength(format!(
+                "chunk {} exceeds file bounds during strict scan",
+                header.chunk_id
+            )));
+        }
+        records.push(ChunkRecord {
+            header,
+            file_offset: offset,
+            total_length,
+        });
+        offset += total_length;
+    }
+    Ok(records)
+}
+
 fn read_chunk_record(
     bytes: &[u8],
     entry: &TocEntryV1,
     strict: bool,
     verify_checksums: bool,
 ) -> Result<ChunkRecord> {
+    if entry.chunk_type == *b"TOCC" {
+        return Err(Error::MalformedToc(
+            "canonical TOC must not contain TOCC entries".to_string(),
+        ));
+    }
     let offset = entry.file_offset as usize;
     let total_length = entry.total_length as usize;
     if offset + total_length > bytes.len() {
@@ -301,6 +338,13 @@ fn read_chunk_record(
         return Err(Error::MalformedToc(format!(
             "TOC entry chunk id {} does not match actual {}",
             entry.chunk_id, header.chunk_id
+        )));
+    }
+    if header.chunk_type != entry.chunk_type {
+        return Err(Error::MalformedToc(format!(
+            "TOC entry chunk type {:?} does not match actual {:?}",
+            std::str::from_utf8(&entry.chunk_type).unwrap_or("????"),
+            std::str::from_utf8(&header.chunk_type).unwrap_or("????"),
         )));
     }
     if header.stored_length != entry.stored_length {
@@ -360,18 +404,38 @@ fn ensure_chunk_id_exists(
     }
 }
 
-fn ensure_single_tocc(records: &[ChunkRecord]) -> Result<()> {
-    let count = records
+fn validate_canonical_toc_entries(records: &[ChunkRecord]) -> Result<()> {
+    if records
         .iter()
-        .filter(|record| record.header.kind() == ChunkKind::Tocc)
-        .count();
-    if count > 1 {
+        .any(|record| record.header.kind() == ChunkKind::Tocc)
+    {
         Err(Error::MalformedToc(
-            "multiple TOCC chunks found".to_string(),
+            "canonical TOC must not index TOCC chunks".to_string(),
         ))
     } else {
         Ok(())
     }
+}
+
+fn validate_strict_tocc_uniqueness(
+    records: &[ChunkRecord],
+    canonical_toc_offset: u64,
+) -> Result<()> {
+    let tocc_records: Vec<&ChunkRecord> = records
+        .iter()
+        .filter(|record| record.header.kind() == ChunkKind::Tocc)
+        .collect();
+    if tocc_records.len() != 1 {
+        return Err(Error::MalformedToc(
+            "strict mode requires exactly one canonical TOCC chunk".to_string(),
+        ));
+    }
+    if tocc_records[0].file_offset != canonical_toc_offset {
+        return Err(Error::MalformedToc(
+            "toc_offset does not point to the canonical TOCC chunk".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn validate_no_overlap(ranges: &[(u64, u64)]) -> Result<()> {
@@ -456,11 +520,22 @@ mod tests {
         bytes[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
     }
 
+    fn write_u64_le(bytes: &mut [u8], offset: usize, value: u64) {
+        bytes[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn canonical_toc_offset(bytes: &[u8]) -> usize {
+        u64::from_le_bytes(bytes[20..28].try_into().expect("slice length should match")) as usize
+    }
+
+    fn canonical_toc_length(bytes: &[u8]) -> usize {
+        u64::from_le_bytes(bytes[28..36].try_into().expect("slice length should match")) as usize
+    }
+
     #[test]
     fn recovery_mode_scans_when_toc_header_is_corrupted() {
         let mut bytes = sample_asset_bytes();
-        let toc_offset =
-            u64::from_le_bytes(bytes[20..28].try_into().expect("slice length should match"));
+        let toc_offset = canonical_toc_offset(&bytes) as u64;
         bytes[toc_offset as usize] = b'B';
         let strict = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default());
         assert!(strict.is_err());
@@ -542,8 +617,7 @@ mod tests {
     #[test]
     fn recovery_mode_does_not_treat_larger_chunk_headers_as_extensible() {
         let mut bytes = sample_asset_bytes();
-        let toc_offset =
-            u64::from_le_bytes(bytes[20..28].try_into().expect("slice length should match"));
+        let toc_offset = canonical_toc_offset(&bytes) as u64;
         bytes[toc_offset as usize] = b'B';
         write_u16_le(
             &mut bytes,
@@ -560,5 +634,80 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, Error::MalformedToc(message) if message.contains("recovery scan")));
+    }
+
+    #[test]
+    fn writer_keeps_tocc_out_of_canonical_toc_entries() {
+        let bytes = sample_asset_bytes();
+        let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
+        assert!(
+            parsed
+                .toc
+                .entries
+                .iter()
+                .all(|entry| entry.chunk_type != *b"TOCC")
+        );
+    }
+
+    #[test]
+    fn rejects_canonical_toc_entries_that_claim_to_be_tocc() {
+        let mut bytes = sample_asset_bytes();
+        let toc_offset = canonical_toc_offset(&bytes);
+        let first_entry_chunk_type = toc_offset + CHUNK_HEADER_SIZE_V1 as usize + 16;
+        bytes[first_entry_chunk_type..first_entry_chunk_type + 4].copy_from_slice(b"TOCC");
+
+        let err = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(err, Error::MalformedToc(message) if message.contains("canonical TOC")));
+
+        let recovery_err = LivePhotoFile::from_bytes(
+            &bytes,
+            ReaderOptions {
+                strictness: Strictness::Recovery,
+                ..ReaderOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert!(matches!(
+            recovery_err,
+            Error::MalformedToc(message) if message.contains("canonical TOC")
+        ));
+    }
+
+    #[test]
+    fn recovery_mode_ignores_additional_non_canonical_tocc_chunks() {
+        let mut bytes = sample_asset_bytes();
+        let toc_offset = canonical_toc_offset(&bytes);
+        let toc_length = canonical_toc_length(&bytes);
+        let extra_tocc = bytes[toc_offset..toc_offset + toc_length].to_vec();
+        bytes.extend_from_slice(&extra_tocc);
+        let new_file_size = bytes.len() as u64;
+        write_u64_le(&mut bytes, 36, new_file_size);
+
+        let parsed = LivePhotoFile::from_bytes(
+            &bytes,
+            ReaderOptions {
+                strictness: Strictness::Recovery,
+                ..ReaderOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(parsed.manifest.schema, "livephoto/v1");
+    }
+
+    #[test]
+    fn strict_mode_rejects_additional_non_canonical_tocc_chunks() {
+        let mut bytes = sample_asset_bytes();
+        let toc_offset = canonical_toc_offset(&bytes);
+        let toc_length = canonical_toc_length(&bytes);
+        let extra_tocc = bytes[toc_offset..toc_offset + toc_length].to_vec();
+        bytes.extend_from_slice(&extra_tocc);
+        let new_file_size = bytes.len() as u64;
+        write_u64_le(&mut bytes, 36, new_file_size);
+
+        let err = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::MalformedToc(message) if message.contains("exactly one canonical TOCC")
+        ));
     }
 }
