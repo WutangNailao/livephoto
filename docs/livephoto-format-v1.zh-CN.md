@@ -175,6 +175,14 @@ v1 中已定义位：
 
 每个 chunk 由固定长度 header 与可变长度 payload 组成。
 
+在文件中，每个 chunk 按以下顺序连续存储：
+
+```text
+[LPChunkHeaderV1][payload bytes][zero padding]
+```
+
+其中 `stored_length` 仅表示 payload 的实际长度，不包含 padding；padding 紧跟在 payload 之后，用于将下一个 chunk 对齐到 8 字节边界。
+
 ### 7.1 Chunk Header
 
 ```c

@@ -175,6 +175,14 @@ All other bits are reserved for future use and must be zero in v1 writers.
 
 Each chunk consists of a fixed-size header and a variable-size payload.
 
+On disk, each chunk is serialized in the following order:
+
+```text
+[LPChunkHeaderV1][payload bytes][zero padding]
+```
+
+`stored_length` covers only the payload bytes and excludes padding. Padding immediately follows the payload and aligns the next chunk to an 8-byte boundary.
+
 ### 7.1 Chunk Header
 
 ```c
