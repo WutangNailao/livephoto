@@ -52,9 +52,9 @@
 
 - 文件头、chunk 头和 TOC 的读写
 - `META`、`PHOT`、`VIDE`、`TOCC` 的核心语义
-- 缩略图、EXIF、XMP、哈希、Apple bridge、Android bridge、签名、厂商扩展和未知 chunk 等可选块
+- 缩略图、EXIF、XMP、Apple bridge、Android bridge、厂商扩展和未知 chunk 等可选块
 - manifest 校验
-- checksum 校验
+- CRC32C 校验
 - TOC 损坏时的恢复模式扫描
 - 重写过程中对未知可选 chunk 的无损保留
 - 一个可读取本地 `.livephoto` 文件的最小浏览器播放器
@@ -103,7 +103,6 @@ pack_livephoto(PackRequest {
     thumbnail: None,
     exif_raw: None,
     xmp: None,
-    hash_json: None,
     apple_bridge_json: None,
     android_bridge_json: None,
     emit_crc32c: true,

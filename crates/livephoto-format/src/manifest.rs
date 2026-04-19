@@ -109,8 +109,6 @@ pub struct ManifestV1 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub xmp_chunk_id: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hash_chunk_id: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub apple_bridge_chunk_id: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub android_bridge_chunk_id: Option<u64>,
@@ -257,14 +255,6 @@ pub struct AndroidBridgeV1 {
     pub xmp_format: String,
     pub primary_image_role: String,
     pub embedded_video_role: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SignaturePayloadV1 {
-    pub algorithm: String,
-    pub signature: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub certificate_chain: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

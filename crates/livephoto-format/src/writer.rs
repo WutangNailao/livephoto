@@ -3,11 +3,9 @@ use std::fs;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::path::Path;
 
-use crate::chunk::{ChunkEnvelope, ChunkFlags, ChunkKind, HashPayloadV1, TocEntryV1, TocPayloadV1};
+use crate::chunk::{ChunkEnvelope, ChunkFlags, ChunkKind, TocEntryV1, TocPayloadV1};
 use crate::error::{ConformanceIssue, Error, Result};
-use crate::manifest::{
-    AndroidBridgeV1, AppleBridgeV1, ManifestV1, SignaturePayloadV1, VendorPayloadV1,
-};
+use crate::manifest::{AndroidBridgeV1, AppleBridgeV1, ManifestV1, VendorPayloadV1};
 use crate::reader::LivePhotoFile;
 use crate::types::{FileFlags, LpFileHeaderV1};
 
@@ -71,10 +69,8 @@ pub enum OptionalChunk {
     ExifRaw(Vec<u8>),
     ExifJson(serde_json::Value),
     Xmp(Vec<u8>),
-    Hash(HashPayloadV1),
     AppleBridge(AppleBridgeV1),
     AndroidBridge(AndroidBridgeV1),
-    Signature(SignaturePayloadV1),
     Vendor(VendorPayloadV1),
     UnknownJson {
         chunk_type: [u8; 4],
@@ -146,6 +142,9 @@ impl LivePhotoAsset {
         let mut optional_envelopes = Vec::new();
         for optional in &self.optional_chunks {
             let flags = optional.default_flags();
+            if flags & ChunkFlags::ENCRYPTED != 0 {
+                optional_metadata.encrypted_chunks_present = true;
+            }
             let (kind, payload) = optional.to_payload()?;
             let envelope =
                 ChunkEnvelope::new(kind, next_chunk_id, flags, payload, options.emit_crc32c);
@@ -172,15 +171,9 @@ impl LivePhotoAsset {
                         .or_insert_with(|| serde_json::Value::String(exif_format.to_string()));
                 }
                 ChunkKind::Xmp => optional_metadata.xmp_chunk_id = Some(next_chunk_id),
-                ChunkKind::Hash => optional_metadata.hash_chunk_id = Some(next_chunk_id),
                 ChunkKind::Appl => optional_metadata.apple_bridge_chunk_id = Some(next_chunk_id),
                 ChunkKind::Andr => optional_metadata.android_bridge_chunk_id = Some(next_chunk_id),
-                ChunkKind::Sign => optional_metadata.signature_present = true,
-                _ => {
-                    if flags & ChunkFlags::ENCRYPTED != 0 {
-                        optional_metadata.encrypted_chunks_present = true;
-                    }
-                }
+                _ => {}
             }
             optional_envelopes.push(envelope);
             next_chunk_id += 1;
@@ -191,7 +184,6 @@ impl LivePhotoAsset {
             .or(optional_metadata.thumbnail_chunk_id);
         manifest.exif_chunk_id = manifest.exif_chunk_id.or(optional_metadata.exif_chunk_id);
         manifest.xmp_chunk_id = manifest.xmp_chunk_id.or(optional_metadata.xmp_chunk_id);
-        manifest.hash_chunk_id = manifest.hash_chunk_id.or(optional_metadata.hash_chunk_id);
         manifest.apple_bridge_chunk_id = manifest
             .apple_bridge_chunk_id
             .or(optional_metadata.apple_bridge_chunk_id);
@@ -298,10 +290,8 @@ struct OptionalMetadata {
     thumbnail_chunk_id: Option<u64>,
     exif_chunk_id: Option<u64>,
     xmp_chunk_id: Option<u64>,
-    hash_chunk_id: Option<u64>,
     apple_bridge_chunk_id: Option<u64>,
     android_bridge_chunk_id: Option<u64>,
-    signature_present: bool,
     encrypted_chunks_present: bool,
 }
 
@@ -320,10 +310,8 @@ impl OptionalChunk {
             Self::ExifRaw(bytes) => Ok((ChunkKind::Exif, bytes.clone())),
             Self::ExifJson(value) => Ok((ChunkKind::Exif, serde_json::to_vec_pretty(value)?)),
             Self::Xmp(bytes) => Ok((ChunkKind::Xmp, bytes.clone())),
-            Self::Hash(value) => Ok((ChunkKind::Hash, serde_json::to_vec_pretty(value)?)),
             Self::AppleBridge(value) => Ok((ChunkKind::Appl, serde_json::to_vec_pretty(value)?)),
             Self::AndroidBridge(value) => Ok((ChunkKind::Andr, serde_json::to_vec_pretty(value)?)),
-            Self::Signature(value) => Ok((ChunkKind::Sign, serde_json::to_vec_pretty(value)?)),
             Self::Vendor(value) => Ok((ChunkKind::Vend, serde_json::to_vec_pretty(value)?)),
             Self::UnknownJson {
                 chunk_type,
@@ -375,12 +363,6 @@ pub fn sniff_mime(bytes: &[u8]) -> Option<&'static str> {
 
 fn build_file_flags(manifest: &ManifestV1, optional_metadata: &OptionalMetadata) -> u64 {
     let mut flags = 0u64;
-    if manifest.hash_chunk_id.is_some() {
-        flags |= FileFlags::HASHES_PRESENT;
-    }
-    if optional_metadata.signature_present {
-        flags |= FileFlags::SIGNATURE_PRESENT;
-    }
     if optional_metadata.encrypted_chunks_present {
         flags |= FileFlags::ENCRYPTED_CHUNKS_PRESENT;
     }
@@ -422,13 +404,6 @@ pub fn optional_chunks_from_asset_like(
             },
             ChunkKind::Exif => OptionalChunk::ExifRaw(payload.clone()),
             ChunkKind::Xmp => OptionalChunk::Xmp(payload.clone()),
-            ChunkKind::Hash => serde_json::from_slice(payload)
-                .map(OptionalChunk::Hash)
-                .unwrap_or_else(|_| OptionalChunk::UnknownBinary {
-                    chunk_type: kind.as_bytes(),
-                    flags: *flags,
-                    payload: payload.clone(),
-                }),
             ChunkKind::Appl => serde_json::from_slice(payload)
                 .map(OptionalChunk::AppleBridge)
                 .unwrap_or_else(|_| OptionalChunk::UnknownBinary {
@@ -438,13 +413,6 @@ pub fn optional_chunks_from_asset_like(
                 }),
             ChunkKind::Andr => serde_json::from_slice(payload)
                 .map(OptionalChunk::AndroidBridge)
-                .unwrap_or_else(|_| OptionalChunk::UnknownBinary {
-                    chunk_type: kind.as_bytes(),
-                    flags: *flags,
-                    payload: payload.clone(),
-                }),
-            ChunkKind::Sign => serde_json::from_slice(payload)
-                .map(OptionalChunk::Signature)
                 .unwrap_or_else(|_| OptionalChunk::UnknownBinary {
                     chunk_type: kind.as_bytes(),
                     flags: *flags,
@@ -515,6 +483,44 @@ mod tests {
     }
 
     #[test]
+    fn emits_crc32c_by_default() {
+        let asset = LivePhotoAsset {
+            manifest: sample_manifest(),
+            photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
+            video: b"\0\0\0\x18ftypmp42".to_vec(),
+            optional_chunks: vec![],
+        };
+        let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
+        let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
+        assert!(parsed.chunks.iter().all(|chunk| chunk.header.crc32c != 0));
+    }
+
+    #[test]
+    fn allows_disabling_crc32c() {
+        let asset = LivePhotoAsset {
+            manifest: sample_manifest(),
+            photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
+            video: b"\0\0\0\x18ftypmp42".to_vec(),
+            optional_chunks: vec![],
+        };
+        let bytes = asset
+            .write_to_bytes(WriterOptions {
+                emit_crc32c: false,
+                strict_validation: true,
+            })
+            .unwrap();
+        let parsed = LivePhotoFile::from_bytes(
+            &bytes,
+            ReaderOptions {
+                verify_checksums: false,
+                ..ReaderOptions::default()
+            },
+        )
+        .unwrap();
+        assert!(parsed.chunks.iter().all(|chunk| chunk.header.crc32c == 0));
+    }
+
+    #[test]
     fn preserves_unknown_optional_chunks_for_rewrite() {
         let asset = LivePhotoAsset {
             manifest: sample_manifest(),
@@ -573,19 +579,10 @@ mod tests {
                     primary_image_role: "display".to_string(),
                     embedded_video_role: "motion".to_string(),
                 }),
-                OptionalChunk::Signature(crate::manifest::SignaturePayloadV1 {
-                    algorithm: "ed25519".to_string(),
-                    signature: "deadbeef".to_string(),
-                    certificate_chain: Vec::new(),
-                }),
             ],
         };
         let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
         let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
-        assert_ne!(
-            parsed.header.flags & crate::types::FileFlags::SIGNATURE_PRESENT,
-            0
-        );
         assert_ne!(
             parsed.header.flags & crate::types::FileFlags::APPLE_BRIDGE_PRESENT,
             0
@@ -616,5 +613,88 @@ mod tests {
                 .iter()
                 .any(|bridge| bridge.target == "android-motion-photo")
         );
+    }
+
+    #[test]
+    fn writes_compact_file_flags_for_encryption_and_bridges() {
+        let asset = LivePhotoAsset {
+            manifest: sample_manifest(),
+            photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
+            video: b"\0\0\0\x18ftypmp42".to_vec(),
+            optional_chunks: vec![
+                OptionalChunk::UnknownBinary {
+                    chunk_type: *b"SECR",
+                    flags: ChunkFlags::ENCRYPTED,
+                    payload: b"ciphertext".to_vec(),
+                },
+                OptionalChunk::AppleBridge(crate::manifest::AppleBridgeV1 {
+                    asset_identifier: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+                    still_image_time_ms: 800,
+                    photo_codec_hint: None,
+                    video_codec_hint: None,
+                    maker_apple_key_17: None,
+                    quicktime_content_identifier: None,
+                }),
+                OptionalChunk::AndroidBridge(crate::manifest::AndroidBridgeV1 {
+                    presentation_timestamp_us: 800000,
+                    xmp_format: "container".to_string(),
+                    primary_image_role: "display".to_string(),
+                    embedded_video_role: "motion".to_string(),
+                }),
+            ],
+        };
+        let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
+        let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
+        assert_eq!(
+            parsed.header.flags,
+            crate::types::FileFlags::ENCRYPTED_CHUNKS_PRESENT
+                | crate::types::FileFlags::APPLE_BRIDGE_PRESENT
+                | crate::types::FileFlags::ANDROID_BRIDGE_PRESENT
+        );
+    }
+
+    #[test]
+    fn preserves_hash_and_sign_chunks_as_unknown_for_rewrite() {
+        let asset = LivePhotoAsset {
+            manifest: sample_manifest(),
+            photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
+            video: b"\0\0\0\x18ftypmp42".to_vec(),
+            optional_chunks: vec![
+                OptionalChunk::UnknownBinary {
+                    chunk_type: *b"HASH",
+                    flags: 0,
+                    payload: b"{\"alg\":\"sha256\"}".to_vec(),
+                },
+                OptionalChunk::UnknownBinary {
+                    chunk_type: *b"SIGN",
+                    flags: 0,
+                    payload: b"{\"algorithm\":\"ed25519\"}".to_vec(),
+                },
+            ],
+        };
+        let bytes = asset.write_to_bytes(WriterOptions::default()).unwrap();
+        let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
+        let rebuilt = LivePhotoAsset {
+            manifest: parsed.manifest.clone(),
+            photo: parsed.get_photo().unwrap().payload.clone(),
+            video: parsed.get_video().unwrap().payload.clone(),
+            optional_chunks: optional_chunks_from_asset_like(&parsed.to_asset()),
+        };
+        assert!(rebuilt.optional_chunks.iter().any(|optional| matches!(
+            optional,
+            OptionalChunk::UnknownBinary {
+                chunk_type,
+                payload,
+                ..
+            } if *chunk_type == *b"HASH" && payload == b"{\"alg\":\"sha256\"}"
+        )));
+        assert!(rebuilt.optional_chunks.iter().any(|optional| matches!(
+            optional,
+            OptionalChunk::UnknownBinary {
+                chunk_type,
+                payload,
+                ..
+            } if *chunk_type == *b"SIGN" && payload == b"{\"algorithm\":\"ed25519\"}"
+        )));
     }
 }

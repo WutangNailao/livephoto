@@ -38,8 +38,6 @@ struct PackArgs {
     #[arg(long)]
     xmp: Option<PathBuf>,
     #[arg(long)]
-    hash_json: Option<PathBuf>,
-    #[arg(long)]
     apple_bridge_json: Option<PathBuf>,
     #[arg(long)]
     android_bridge_json: Option<PathBuf>,
@@ -75,7 +73,6 @@ fn main() -> Result<()> {
                 thumbnail,
                 exif_raw,
                 xmp,
-                hash_json,
                 apple_bridge_json,
                 android_bridge_json,
                 no_crc32c,
@@ -88,7 +85,6 @@ fn main() -> Result<()> {
                 thumbnail,
                 exif_raw,
                 xmp,
-                hash_json,
                 apple_bridge_json,
                 android_bridge_json,
                 emit_crc32c: !no_crc32c,

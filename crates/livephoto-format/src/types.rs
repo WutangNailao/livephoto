@@ -11,11 +11,9 @@ pub const MINOR_VERSION_V1: u16 = 0;
 pub struct FileFlags(pub u64);
 
 impl FileFlags {
-    pub const HASHES_PRESENT: u64 = 1 << 0;
-    pub const SIGNATURE_PRESENT: u64 = 1 << 1;
-    pub const ENCRYPTED_CHUNKS_PRESENT: u64 = 1 << 2;
-    pub const APPLE_BRIDGE_PRESENT: u64 = 1 << 3;
-    pub const ANDROID_BRIDGE_PRESENT: u64 = 1 << 4;
+    pub const ENCRYPTED_CHUNKS_PRESENT: u64 = 1 << 0;
+    pub const APPLE_BRIDGE_PRESENT: u64 = 1 << 1;
+    pub const ANDROID_BRIDGE_PRESENT: u64 = 1 << 2;
 
     pub fn contains(self, bit: u64) -> bool {
         self.0 & bit != 0

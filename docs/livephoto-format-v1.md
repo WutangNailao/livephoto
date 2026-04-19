@@ -44,7 +44,7 @@ A `.livephoto` file contains:
 - one required manifest chunk
 - one required primary cover image chunk
 - one required primary motion video chunk
-- zero or more optional chunks for thumbnails, hashes, EXIF, XMP, bridge metadata, signatures, and vendor extensions
+- zero or more optional chunks for thumbnails, EXIF, XMP, bridge metadata, and vendor extensions
 
 The semantic model is:
 
@@ -165,11 +165,9 @@ File flags are a `u64` bitset.
 
 Defined bits in v1:
 
-- bit 0: file contains integrity hashes
-- bit 1: file contains a signature block
-- bit 2: file contains encrypted chunks
-- bit 3: file contains bridge metadata for Apple Live Photo
-- bit 4: file contains bridge metadata for Android Motion Photo
+- bit 0: file contains encrypted chunks
+- bit 1: file contains bridge metadata for Apple Live Photo
+- bit 2: file contains bridge metadata for Android Motion Photo
 
 All other bits are reserved for future use and must be zero in v1 writers.
 
@@ -351,7 +349,6 @@ The following root fields are defined in v1.
 | `thumbnail_chunk_id` | integer (`u64`) | No | Chunk id of the optional thumbnail image. Must reference a `THMB` chunk. |
 | `exif_chunk_id` | integer (`u64`) | No | Chunk id of the optional EXIF metadata block. Must reference an `EXIF` chunk. |
 | `xmp_chunk_id` | integer (`u64`) | No | Chunk id of the optional XMP packet. Must reference an `XMP_` chunk. |
-| `hash_chunk_id` | integer (`u64`) | No | Chunk id of the optional integrity hash block. Must reference a `HASH` chunk. |
 | `apple_bridge_chunk_id` | integer (`u64`) | No | Chunk id of the optional Apple bridge metadata block. Must reference an `APPL` chunk. |
 | `android_bridge_chunk_id` | integer (`u64`) | No | Chunk id of the optional Android bridge metadata block. Must reference an `ANDR` chunk. |
 | `bridges` | array of objects | No | Optional structured bridge descriptors. Each item is a `BridgeDescriptorV1` object as defined below. |
@@ -517,24 +514,7 @@ Stores XMP packet bytes as UTF-8 XML.
 
 The chunk type is `XMP_` because chunk types are fixed 4-byte ASCII codes.
 
-### 10.4 `HASH` Integrity Hashes Chunk
-
-Stores cryptographic hashes for selected chunks or the whole file.
-
-Payload format in v1 is UTF-8 JSON:
-
-```json
-{
-  "alg": "sha256",
-  "file": "hex...",
-  "chunks": {
-    "2": "hex...",
-    "3": "hex..."
-  }
-}
-```
-
-### 10.5 `APPL` Apple Bridge Chunk
+### 10.4 `APPL` Apple Bridge Chunk
 
 Stores metadata needed to reconstruct an Apple-compatible Live Photo pair.
 
@@ -554,7 +534,7 @@ Recommended fields:
 This chunk does not make the file natively readable by Apple Photos.
 It only preserves bridge data for export.
 
-### 10.6 `ANDR` Android Bridge Chunk
+### 10.5 `ANDR` Android Bridge Chunk
 
 Stores metadata needed to reconstruct Android Motion Photo compatible outputs.
 
@@ -569,13 +549,7 @@ Recommended fields:
 }
 ```
 
-### 10.7 `SIGN` Signature Chunk
-
-Stores a detached signature or certificate chain.
-
-The exact cryptographic schema is out of scope for v1 but the chunk type is reserved.
-
-### 10.8 `VEND` Vendor Extension Chunk
+### 10.6 `VEND` Vendor Extension Chunk
 
 Stores implementation-specific data.
 
@@ -810,7 +784,7 @@ Recommended write procedure:
 6. Record each chunk offset and total length.
 7. Build and write the canonical `TOCC` chunk containing only non-`TOCC` entries.
 8. Seek back and finalize the file header.
-9. Optionally compute and write hashes before finalization if your pipeline supports it.
+9. Writers should emit valid `crc32c` values by default unless explicitly configured not to.
 
 ## 19. Reader Algorithm
 
@@ -836,7 +810,7 @@ A minimal valid `.livephoto` file contains:
 - one `VIDE` chunk
 - one `TOCC` chunk
 
-No thumbnail, hash, EXIF, XMP, or bridge chunk is required.
+No thumbnail, EXIF, XMP, or bridge chunk is required.
 
 ## 21. Example Manifest
 
@@ -877,6 +851,8 @@ The following are intentionally left for future revisions:
 
 - chunk-level compression envelopes
 - chunk-level encryption envelopes
+- chunk-level integrity hashes
+- detached signatures
 - multiple audio tracks
 - subtitle or caption tracks
 - embedded image sequences instead of only a single video
@@ -892,12 +868,12 @@ For a first Rust implementation, use:
 - `image/jpeg` or `image/heic` for `PHOT`
 - `video/mp4` for `VIDE`
 - `serde_json` for manifest parsing
-- `crc32c` only if integrity checks are needed immediately
+- `crc32c` enabled by default for per-chunk integrity checks
 
 Do not implement in v1 initial milestone:
 
 - encryption
-- signature validation
+- chunk-level hashes or signatures
 - multi-rendition selection logic
 - lossy rewrite of unknown chunks
 

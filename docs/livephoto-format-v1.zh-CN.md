@@ -44,7 +44,7 @@
 - 一个必选 manifest 块
 - 一个必选主封面图块
 - 一个必选主动态视频块
-- 零个或多个可选块，用于缩略图、哈希、EXIF、XMP、桥接元数据、签名、厂商扩展等
+- 零个或多个可选块，用于缩略图、EXIF、XMP、桥接元数据、厂商扩展等
 
 语义模型如下：
 
@@ -165,11 +165,9 @@ struct LPFileHeaderV1 {
 
 v1 中已定义位：
 
-- bit 0：文件包含完整性哈希
-- bit 1：文件包含签名块
-- bit 2：文件包含加密 chunk
-- bit 3：文件包含 Apple Live Photo 桥接元数据
-- bit 4：文件包含 Android Motion Photo 桥接元数据
+- bit 0：文件包含加密 chunk
+- bit 1：文件包含 Apple Live Photo 桥接元数据
+- bit 2：文件包含 Android Motion Photo 桥接元数据
 
 其余位在 v1 中保留，写入器必须写 0。
 
@@ -351,7 +349,6 @@ v1 中定义以下根对象字段。
 | `thumbnail_chunk_id` | 整数（`u64`） | 否 | 可选缩略图 chunk 的 id。必须引用 `THMB` chunk。 |
 | `exif_chunk_id` | 整数（`u64`） | 否 | 可选 EXIF 元数据 chunk 的 id。必须引用 `EXIF` chunk。 |
 | `xmp_chunk_id` | 整数（`u64`） | 否 | 可选 XMP packet chunk 的 id。必须引用 `XMP_` chunk。 |
-| `hash_chunk_id` | 整数（`u64`） | 否 | 可选完整性哈希块的 chunk id。必须引用 `HASH` chunk。 |
 | `apple_bridge_chunk_id` | 整数（`u64`） | 否 | 可选 Apple bridge 元数据块的 chunk id。必须引用 `APPL` chunk。 |
 | `android_bridge_chunk_id` | 整数（`u64`） | 否 | 可选 Android bridge 元数据块的 chunk id。必须引用 `ANDR` chunk。 |
 | `bridges` | 对象数组 | 否 | 可选的结构化 bridge 描述符列表。数组元素为下文定义的 `BridgeDescriptorV1` 对象。 |
@@ -517,24 +514,7 @@ manifest 应通过 `extensions` 指明表示形式，例如：
 
 由于 chunk type 固定为 4 字节 ASCII，因此采用 `XMP_` 表示。
 
-### 10.4 `HASH` 完整性哈希 Chunk
-
-用于存储文件级或 chunk 级加密哈希。
-
-v1 中 payload 使用 UTF-8 JSON：
-
-```json
-{
-  "alg": "sha256",
-  "file": "hex...",
-  "chunks": {
-    "2": "hex...",
-    "3": "hex..."
-  }
-}
-```
-
-### 10.5 `APPL` Apple Bridge Chunk
+### 10.4 `APPL` Apple Bridge Chunk
 
 用于保存导出 Apple Live Photo 所需的桥接信息。
 
@@ -554,7 +534,7 @@ v1 中 payload 使用 UTF-8 JSON：
 该 chunk 不能让 `.livephoto` 文件被 Apple Photos 直接识别为原生 Live Photo。
 它仅用于保留导出桥接时所需的信息。
 
-### 10.6 `ANDR` Android Bridge Chunk
+### 10.5 `ANDR` Android Bridge Chunk
 
 用于保存导出 Android Motion Photo 所需的桥接信息。
 
@@ -569,13 +549,7 @@ v1 中 payload 使用 UTF-8 JSON：
 }
 ```
 
-### 10.7 `SIGN` 签名 Chunk
-
-用于存储 detached signature 或证书链。
-
-v1 不规定具体密码学格式，但保留该 chunk type。
-
-### 10.8 `VEND` 厂商扩展 Chunk
+### 10.6 `VEND` 厂商扩展 Chunk
 
 用于存储实现方私有数据。
 
@@ -810,7 +784,7 @@ pub struct PlaybackPolicyV1 {
 6. 记录每个 chunk 的偏移和总长度。
 7. 构造并写入只包含非 `TOCC` 目录项的 canonical `TOCC` chunk。
 8. 回填文件头。
-9. 若流程支持，可在最终落盘前写入哈希信息。
+9. 除非显式关闭，写入器应默认写入有效的 `crc32c` 值。
 
 ## 19. Reader 算法建议
 
@@ -836,7 +810,7 @@ pub struct PlaybackPolicyV1 {
 - 一个 `VIDE`
 - 一个 `TOCC`
 
-缩略图、哈希、EXIF、XMP、桥接 metadata 都不是必需的。
+缩略图、EXIF、XMP、桥接 metadata 都不是必需的。
 
 ## 21. 示例 Manifest
 
@@ -877,6 +851,8 @@ pub struct PlaybackPolicyV1 {
 
 - chunk 级压缩封装
 - chunk 级加密封装
+- chunk 级完整性哈希
+- detached signatures
 - 多音轨
 - 字幕或 caption track
 - 除视频外的图像序列承载能力
@@ -892,12 +868,12 @@ pub struct PlaybackPolicyV1 {
 - `PHOT` 优先用 `image/jpeg` 或 `image/heic`
 - `VIDE` 优先用 `video/mp4`
 - `serde_json` 解析 manifest
-- 如无强需求，可暂不启用 `crc32c`
+- 默认启用 `crc32c` 做 per-chunk 完整性校验
 
 首个 v1 里程碑不建议一开始就做：
 
 - 加密
-- 签名验证
+- chunk 级哈希或签名
 - 多版本媒体自动选择
 - 对未知 chunk 的有损重写
 

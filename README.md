@@ -52,9 +52,9 @@ The current implementation supports:
 
 - file header, chunk header, and TOC parsing/writing
 - required `META`, `PHOT`, `VIDE`, and `TOCC` semantics
-- optional chunks such as thumbnail, EXIF, XMP, hash, Apple bridge, Android bridge, signature, vendor extensions, and unknown chunks
+- optional chunks such as thumbnail, EXIF, XMP, Apple bridge, Android bridge, vendor extensions, and unknown chunks
 - manifest validation
-- checksum verification
+- CRC32C checksum verification
 - recovery-mode chunk scanning if TOC parsing fails
 - lossless preservation of unknown optional chunks during rewrite
 - a minimal browser-based player for local `.livephoto` files
@@ -103,7 +103,6 @@ pack_livephoto(PackRequest {
     thumbnail: None,
     exif_raw: None,
     xmp: None,
-    hash_json: None,
     apple_bridge_json: None,
     android_bridge_json: None,
     emit_crc32c: true,

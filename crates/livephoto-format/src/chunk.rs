@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
 use std::io::{Read, Write};
-
-use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::types::{pad_len, read_u16, read_u32, read_u64, write_u16, write_u32, write_u64};
@@ -17,10 +14,8 @@ pub enum ChunkKind {
     Thmb,
     Exif,
     Xmp,
-    Hash,
     Appl,
     Andr,
-    Sign,
     Vend,
     Unknown([u8; 4]),
 }
@@ -35,10 +30,8 @@ impl ChunkKind {
             b"THMB" => Self::Thmb,
             b"EXIF" => Self::Exif,
             b"XMP_" => Self::Xmp,
-            b"HASH" => Self::Hash,
             b"APPL" => Self::Appl,
             b"ANDR" => Self::Andr,
-            b"SIGN" => Self::Sign,
             b"VEND" => Self::Vend,
             _ => Self::Unknown(bytes),
         }
@@ -53,10 +46,8 @@ impl ChunkKind {
             Self::Thmb => *b"THMB",
             Self::Exif => *b"EXIF",
             Self::Xmp => *b"XMP_",
-            Self::Hash => *b"HASH",
             Self::Appl => *b"APPL",
             Self::Andr => *b"ANDR",
-            Self::Sign => *b"SIGN",
             Self::Vend => *b"VEND",
             Self::Unknown(bytes) => bytes,
         }
@@ -75,10 +66,8 @@ impl ChunkKind {
             Self::Thmb => "THMB",
             Self::Exif => "EXIF",
             Self::Xmp => "XMP_",
-            Self::Hash => "HASH",
             Self::Appl => "APPL",
             Self::Andr => "ANDR",
-            Self::Sign => "SIGN",
             Self::Vend => "VEND",
             Self::Unknown(_) => "UNKN",
         }
@@ -308,13 +297,4 @@ impl TocPayloadV1 {
         }
         Ok(buf)
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct HashPayloadV1 {
-    pub alg: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file: Option<String>,
-    #[serde(default)]
-    pub chunks: BTreeMap<String, String>,
 }

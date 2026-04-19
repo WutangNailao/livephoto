@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use livephoto_format::{
-    AndroidBridgeV1, AppleBridgeV1, HashPayloadV1, LivePhotoAsset, LivePhotoFile, ManifestV1,
-    OptionalChunk, ReaderOptions, Strictness, ValidationReport, WriterOptions, inspect_file,
+    AndroidBridgeV1, AppleBridgeV1, LivePhotoAsset, LivePhotoFile, ManifestV1, OptionalChunk,
+    ReaderOptions, Strictness, ValidationReport, WriterOptions, inspect_file,
 };
 
 #[derive(Debug, Clone)]
@@ -16,7 +16,6 @@ pub struct PackRequest {
     pub thumbnail: Option<PathBuf>,
     pub exif_raw: Option<PathBuf>,
     pub xmp: Option<PathBuf>,
-    pub hash_json: Option<PathBuf>,
     pub apple_bridge_json: Option<PathBuf>,
     pub android_bridge_json: Option<PathBuf>,
     pub emit_crc32c: bool,
@@ -61,7 +60,6 @@ pub fn pack_livephoto(request: PackRequest) -> Result<PackResult> {
         thumbnail,
         exif_raw,
         xmp,
-        hash_json,
         apple_bridge_json,
         android_bridge_json,
         emit_crc32c,
@@ -77,7 +75,6 @@ pub fn pack_livephoto(request: PackRequest) -> Result<PackResult> {
         thumbnail,
         exif_raw,
         xmp,
-        hash_json,
         apple_bridge_json,
         android_bridge_json,
     )?;
@@ -145,7 +142,6 @@ fn load_optional_chunks(
     thumbnail: Option<PathBuf>,
     exif_raw: Option<PathBuf>,
     xmp: Option<PathBuf>,
-    hash_json: Option<PathBuf>,
     apple_bridge_json: Option<PathBuf>,
     android_bridge_json: Option<PathBuf>,
 ) -> Result<Vec<OptionalChunk>> {
@@ -166,12 +162,6 @@ fn load_optional_chunks(
         optional_chunks.push(OptionalChunk::Xmp(
             fs::read(&path).with_context(|| format!("read {}", path.display()))?,
         ));
-    }
-    if let Some(path) = hash_json {
-        let value: HashPayloadV1 = serde_json::from_slice(
-            &fs::read(&path).with_context(|| format!("read {}", path.display()))?,
-        )?;
-        optional_chunks.push(OptionalChunk::Hash(value));
     }
     if let Some(path) = apple_bridge_json {
         let value: AppleBridgeV1 = serde_json::from_slice(
