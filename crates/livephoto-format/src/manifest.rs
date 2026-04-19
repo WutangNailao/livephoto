@@ -272,3 +272,35 @@ pub struct VendorPayloadV1 {
     pub vendor_id: String,
     pub payload: serde_json::Value,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_manifest(asset_id: &str) -> ManifestV1 {
+        ManifestV1 {
+            schema: "livephoto/v1".to_string(),
+            asset_id: asset_id.to_string(),
+            created_at_ms: 1,
+            duration_ms: 1500,
+            width: 1080,
+            height: 1440,
+            cover_timestamp_ms: 800,
+            photo_chunk_id: 1,
+            video_chunk_id: 2,
+            photo_mime: "image/jpeg".to_string(),
+            video_mime: "video/mp4".to_string(),
+            has_audio: true,
+            playback: PlaybackPolicyV1::default(),
+            ..ManifestV1::default()
+        }
+    }
+
+    #[test]
+    fn accepts_non_uuid_asset_id() {
+        let manifest = sample_manifest("asset-demo-01");
+
+        manifest.validate().unwrap();
+        manifest.validate_template().unwrap();
+    }
+}

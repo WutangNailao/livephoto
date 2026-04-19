@@ -90,6 +90,9 @@ Any UUID represented in JSON must use canonical lowercase hyphenated text form, 
 
 `"550e8400-e29b-41d4-a716-446655440000"`
 
+This section defines the JSON text form for values that are UUIDs.
+It does not imply that every identifier field in the format is a UUID.
+
 ## 5. File Layout
 
 The top-level layout is:
@@ -300,7 +303,7 @@ Exactly one primary `META` chunk is required in v1.
 ```json
 {
   "schema": "livephoto/v1",
-  "asset_id": "550e8400-e29b-41d4-a716-446655440000",
+  "asset_id": "asset-demo-01",
   "created_at_ms": 1776038462000,
   "duration_ms": 1800,
   "width": 1440,
@@ -328,7 +331,7 @@ The following fields are defined in v1.
 Required root fields:
 
 - `schema`: must be `"livephoto/v1"`
-- `asset_id`: unique logical asset id
+- `asset_id`: opaque unique string identifying the logical asset; UUID recommended but not required; if a UUID is used, it must follow Section 4.5
 - `created_at_ms`: logical creation timestamp
 - `duration_ms`: total motion duration
 - `width`: display width in pixels
@@ -844,7 +847,7 @@ No thumbnail, hash, EXIF, XMP, or bridge chunk is required.
 ```json
 {
   "schema": "livephoto/v1",
-  "asset_id": "f0b2d6a2-36f3-4d72-82ab-67c8d44661e3",
+  "asset_id": "asset-demo-01",
   "created_at_ms": 1776070800000,
   "duration_ms": 1500,
   "width": 1080,
