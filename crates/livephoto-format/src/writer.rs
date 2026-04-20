@@ -142,9 +142,6 @@ impl LivePhotoAsset {
         let mut optional_envelopes = Vec::new();
         for optional in &self.optional_chunks {
             let flags = optional.default_flags();
-            if flags & ChunkFlags::ENCRYPTED != 0 {
-                optional_metadata.encrypted_chunks_present = true;
-            }
             let (kind, payload) = optional.to_payload()?;
             let envelope =
                 ChunkEnvelope::new(kind, next_chunk_id, flags, payload, options.emit_crc32c);
@@ -233,7 +230,7 @@ impl LivePhotoAsset {
 
         let mut cursor = Cursor::new(Vec::new());
         let mut header = LpFileHeaderV1::new(meta_chunk_id);
-        header.flags = build_file_flags(&manifest, &optional_metadata);
+        header.flags = build_file_flags(&manifest);
         header.write_to(&mut cursor)?;
 
         let mut toc_entries = Vec::with_capacity(envelopes.len() + 1);
@@ -292,7 +289,6 @@ struct OptionalMetadata {
     xmp_chunk_id: Option<u64>,
     apple_bridge_chunk_id: Option<u64>,
     android_bridge_chunk_id: Option<u64>,
-    encrypted_chunks_present: bool,
 }
 
 impl OptionalChunk {
@@ -361,11 +357,8 @@ pub fn sniff_mime(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-fn build_file_flags(manifest: &ManifestV1, optional_metadata: &OptionalMetadata) -> u64 {
+fn build_file_flags(manifest: &ManifestV1) -> u64 {
     let mut flags = 0u64;
-    if optional_metadata.encrypted_chunks_present {
-        flags |= FileFlags::ENCRYPTED_CHUNKS_PRESENT;
-    }
     if manifest.apple_bridge_chunk_id.is_some() {
         flags |= FileFlags::APPLE_BRIDGE_PRESENT;
     }
@@ -616,17 +609,12 @@ mod tests {
     }
 
     #[test]
-    fn writes_compact_file_flags_for_encryption_and_bridges() {
+    fn writes_bridge_file_flags_without_encryption_summary() {
         let asset = LivePhotoAsset {
             manifest: sample_manifest(),
             photo: vec![0xFF, 0xD8, 0xFF, 0xD9],
             video: b"\0\0\0\x18ftypmp42".to_vec(),
             optional_chunks: vec![
-                OptionalChunk::UnknownBinary {
-                    chunk_type: *b"SECR",
-                    flags: ChunkFlags::ENCRYPTED,
-                    payload: b"ciphertext".to_vec(),
-                },
                 OptionalChunk::AppleBridge(crate::manifest::AppleBridgeV1 {
                     asset_identifier: "550e8400-e29b-41d4-a716-446655440000".to_string(),
                     still_image_time_ms: 800,
@@ -647,8 +635,7 @@ mod tests {
         let parsed = LivePhotoFile::from_bytes(&bytes, ReaderOptions::default()).unwrap();
         assert_eq!(
             parsed.header.flags,
-            crate::types::FileFlags::ENCRYPTED_CHUNKS_PRESENT
-                | crate::types::FileFlags::APPLE_BRIDGE_PRESENT
+            crate::types::FileFlags::APPLE_BRIDGE_PRESENT
                 | crate::types::FileFlags::ANDROID_BRIDGE_PRESENT
         );
     }

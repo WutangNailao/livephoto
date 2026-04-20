@@ -11,7 +11,6 @@ pub const MINOR_VERSION_V1: u16 = 0;
 pub struct FileFlags(pub u64);
 
 impl FileFlags {
-    pub const ENCRYPTED_CHUNKS_PRESENT: u64 = 1 << 0;
     pub const APPLE_BRIDGE_PRESENT: u64 = 1 << 1;
     pub const ANDROID_BRIDGE_PRESENT: u64 = 1 << 2;
 

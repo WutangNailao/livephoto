@@ -80,7 +80,6 @@ pub struct ChunkFlags(pub u64);
 impl ChunkFlags {
     pub const REQUIRED_FOR_PRIMARY_PLAYBACK: u64 = 1 << 0;
     pub const COMPRESSED: u64 = 1 << 1;
-    pub const ENCRYPTED: u64 = 1 << 2;
     pub const DETACHED_BRIDGE_METADATA: u64 = 1 << 4;
 
     pub fn contains(self, bit: u64) -> bool {
