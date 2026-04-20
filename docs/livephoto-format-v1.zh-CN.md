@@ -165,7 +165,6 @@ struct LPFileHeaderV1 {
 
 v1 中已定义位：
 
-- bit 0：文件包含加密 chunk
 - bit 1：文件包含 Apple Live Photo 桥接元数据
 - bit 2：文件包含 Android Motion Photo 桥接元数据
 
@@ -235,7 +234,7 @@ v1 中已定义位：
 
 - bit 0：该 chunk 为主播放流程必需
 - bit 1：payload 已压缩
-- bit 2：payload 已加密
+- bit 2：保留
 - bit 3：保留
 - bit 4：该 chunk 只包含桥接元数据，不参与直接播放
 
@@ -858,7 +857,6 @@ pub struct PlaybackPolicyV1 {
 以下能力故意留到后续版本：
 
 - chunk 级压缩封装
-- chunk 级加密封装
 - chunk 级完整性哈希
 - detached signatures
 - 多音轨
@@ -880,7 +878,6 @@ pub struct PlaybackPolicyV1 {
 
 首个 v1 里程碑不建议一开始就做：
 
-- 加密
 - chunk 级哈希或签名
 - 多版本媒体自动选择
 - 对未知 chunk 的有损重写

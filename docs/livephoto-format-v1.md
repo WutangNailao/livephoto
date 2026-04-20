@@ -165,7 +165,6 @@ File flags are a `u64` bitset.
 
 Defined bits in v1:
 
-- bit 0: file contains encrypted chunks
 - bit 1: file contains bridge metadata for Apple Live Photo
 - bit 2: file contains bridge metadata for Android Motion Photo
 
@@ -235,7 +234,7 @@ Defined bits in v1:
 
 - bit 0: chunk is required for primary playback
 - bit 1: chunk payload is compressed
-- bit 2: chunk payload is encrypted
+- bit 2: reserved
 - bit 3: reserved
 - bit 4: chunk is detached bridge metadata only
 
@@ -858,7 +857,6 @@ No thumbnail, EXIF, XMP, or bridge chunk is required.
 The following are intentionally left for future revisions:
 
 - chunk-level compression envelopes
-- chunk-level encryption envelopes
 - chunk-level integrity hashes
 - detached signatures
 - multiple audio tracks
@@ -880,7 +878,6 @@ For a first Rust implementation, use:
 
 Do not implement in v1 initial milestone:
 
-- encryption
 - chunk-level hashes or signatures
 - multi-rendition selection logic
 - lossy rewrite of unknown chunks
