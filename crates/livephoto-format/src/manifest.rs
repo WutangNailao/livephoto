@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::media::{PhotoFormat, VideoFormat};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -207,15 +208,7 @@ impl ManifestV1 {
 }
 
 fn validate_photo_mime(mime: &str) -> Result<()> {
-    let allowed = [
-        "image/jpeg",
-        "image/heic",
-        "image/heif",
-        "image/avif",
-        "image/png",
-        "image/webp",
-    ];
-    if allowed.contains(&mime) {
+    if PhotoFormat::from_mime(mime).is_some() {
         Ok(())
     } else {
         Err(Error::UnsupportedCodec(format!(
@@ -225,8 +218,7 @@ fn validate_photo_mime(mime: &str) -> Result<()> {
 }
 
 fn validate_video_mime(mime: &str) -> Result<()> {
-    let allowed = ["video/mp4", "video/quicktime", "video/webm"];
-    if allowed.contains(&mime) {
+    if VideoFormat::from_mime(mime).is_some() {
         Ok(())
     } else {
         Err(Error::UnsupportedCodec(format!(
