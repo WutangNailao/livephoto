@@ -41,6 +41,8 @@
   `.livephoto` 格式的 Rust 实现
 - `crates/livephoto-toolkit`
   可复用的高层 Rust API，用于打包、检查、解包 `.livephoto` 文件
+- `crates/livephoto-media`
+  可复用的图片和视频输出格式转换规划层
 - `crates/livephoto-cli`
   用于打包、检查、解包 `.livephoto` 的命令行工具
 - `web/`

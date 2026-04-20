@@ -152,6 +152,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "livephoto-media"
+version = "0.1.0"
+dependencies = [
+ "livephoto-format",
+ "thiserror",
+]
+
+[[package]]
 name = "livephoto-toolkit"
 version = "0.1.0"
 dependencies = [

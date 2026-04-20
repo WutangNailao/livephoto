@@ -2,6 +2,7 @@
 members = [
     "crates/livephoto-format",
     "crates/livephoto-toolkit",
+    "crates/livephoto-media",
     "crates/livephoto-cli",
 ]
 resolver = "3"

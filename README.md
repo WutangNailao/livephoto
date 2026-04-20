@@ -41,6 +41,8 @@ This project exists to make dynamic photos easier to:
   Rust implementation of the container format
 - `crates/livephoto-toolkit`
   Reusable high-level Rust APIs for packing, inspecting, and unpacking `.livephoto` files
+- `crates/livephoto-media`
+  Reusable media output conversion planning for image and video formats
 - `crates/livephoto-cli`
   CLI for packing, inspecting, and unpacking `.livephoto` files
 - `web/`
